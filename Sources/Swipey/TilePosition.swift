@@ -4,6 +4,8 @@ enum TilePosition {
     case maximize
     case leftHalf
     case rightHalf
+    case topHalf
+    case bottomHalf
     case topLeftQuarter
     case topRightQuarter
     case bottomLeftQuarter
@@ -46,6 +48,24 @@ enum TilePosition {
                 y: visible.minY + margin,
                 width: halfWidth,
                 height: visible.height - margin * 2
+            )
+
+        case .topHalf:
+            let halfHeight = (visible.height - margin * 2 - gap) / 2
+            return CGRect(
+                x: visible.minX + margin,
+                y: visible.minY + margin + halfHeight + gap,
+                width: visible.width - margin * 2,
+                height: halfHeight
+            )
+
+        case .bottomHalf:
+            let halfHeight = (visible.height - margin * 2 - gap) / 2
+            return CGRect(
+                x: visible.minX + margin,
+                y: visible.minY + margin,
+                width: visible.width - margin * 2,
+                height: halfHeight
             )
 
         case .topLeftQuarter:

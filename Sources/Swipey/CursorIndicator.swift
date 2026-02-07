@@ -126,6 +126,14 @@ final class CursorIndicator {
                 drawOutlined(screen: screen, cr: cr,
                              fill: NSRect(x: screen.minX + halfW + gap, y: screen.minY,
                                           width: halfW, height: screen.height))
+            case .topHalf:
+                drawOutlined(screen: screen, cr: cr,
+                             fill: NSRect(x: screen.minX, y: screen.minY + halfH + gap,
+                                          width: screen.width, height: halfH))
+            case .bottomHalf:
+                drawOutlined(screen: screen, cr: cr,
+                             fill: NSRect(x: screen.minX, y: screen.minY,
+                                          width: screen.width, height: halfH))
             case .topLeftQuarter:
                 drawOutlined(screen: screen, cr: cr,
                              fill: NSRect(x: screen.minX, y: screen.minY + halfH + gap,

@@ -4,6 +4,10 @@ import AppKit
 enum TitleBarDetector {
     /// Check if the given screen-space point (CG/top-left origin) is over a window's title bar.
     /// Returns the window AXUIElement if so, nil otherwise.
+    /// Minimum height (in points) of the gesture-eligible strip at the top of a window.
+    /// Acts as a fallback for apps without a native title bar (e.g. Electron apps).
+    private static let minimumTitleBarHeight: CGFloat = 10
+
     static func detectWindow(at point: CGPoint) -> AXUIElement? {
         let systemWide = AXUIElementCreateSystemWide()
         var element: AXUIElement?
@@ -13,11 +17,16 @@ enum TitleBarDetector {
             return nil
         }
 
-        guard isTitleBarArea(hitElement) else {
-            return nil
+        if isTitleBarArea(hitElement) {
+            return findWindow(from: hitElement)
         }
 
-        return findWindow(from: hitElement)
+        // Fallback: allow the top strip of any window (for apps without a native title bar)
+        if let window = findWindow(from: hitElement), isInTopStrip(point: point, of: window) {
+            return window
+        }
+
+        return nil
     }
 
     /// Convert NSScreen coordinates (bottom-left origin) to CG/Accessibility coordinates (top-left origin).
@@ -47,7 +56,7 @@ enum TitleBarDetector {
         // Toolbar role
         if role == "AXToolbar" { return true }
 
-        // Walk up ancestors to check if any parent is a title bar, toolbar, or window
+        // Walk up ancestors to check if any parent is a title bar or toolbar
         var current = element
         for _ in 0..<5 {
             guard let parent = attribute(of: current, key: kAXParentAttribute) as! AXUIElement? else {
@@ -59,10 +68,10 @@ enum TitleBarDetector {
             if parentSubrole == "AXTitleBar" || parentRole == "AXToolbar" {
                 return true
             }
-            // If parent is a window, the element is a direct child of the window
-            // (title text, groups, etc. in the title bar area)
+            // Stop walking if we reach the window — anything not already
+            // matched is content area, not title bar
             if parentRole == kAXWindowRole as String {
-                return true
+                return false
             }
             current = parent
         }
@@ -80,6 +89,24 @@ enum TitleBarDetector {
             current = attribute(of: el, key: kAXParentAttribute) as! AXUIElement?
         }
         return nil
+    }
+
+    /// Returns true if `point` (CG/top-left origin) falls within the top strip of the window.
+    private static func isInTopStrip(point: CGPoint, of window: AXUIElement) -> Bool {
+        var posValue: AnyObject?
+        var sizeValue: AnyObject?
+        guard AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &posValue) == .success,
+              AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &sizeValue) == .success else {
+            return false
+        }
+        var origin = CGPoint.zero
+        var size = CGSize.zero
+        guard AXValueGetValue(posValue as! AXValue, .cgPoint, &origin),
+              AXValueGetValue(sizeValue as! AXValue, .cgSize, &size) else {
+            return false
+        }
+        let distanceFromTop = point.y - origin.y
+        return distanceFromTop >= 0 && distanceFromTop <= minimumTitleBarHeight && point.x >= origin.x && point.x <= origin.x + size.width
     }
 
     private static func attribute(of element: AXUIElement, key: String) -> AnyObject? {

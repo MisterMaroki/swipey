@@ -56,6 +56,33 @@ final class WindowManager: @unchecked Sendable {
         }
     }
 
+    /// Exit native fullscreen, wait for the Space animation, then tile.
+    func exitFullscreenAndTile(window: AXUIElement, to position: TilePosition, on screen: NSScreen?) {
+        AXUIElementSetAttributeValue(window, "AXFullScreen" as CFString, kCFBooleanFalse)
+        let key = windowKey(for: window)
+        savedFrames.removeValue(forKey: key)
+
+        if position == .restore {
+            return // just exit fullscreen, no further tiling needed
+        }
+
+        // Wait for the fullscreen exit animation to finish before tiling
+        DispatchQueue.global(qos: .userInteractive).async { [self] in
+            // Poll until AXFullScreen is false and window is addressable
+            for _ in 0..<20 {
+                usleep(100_000) // 100ms
+                var value: AnyObject?
+                let err = AXUIElementCopyAttributeValue(window, "AXFullScreen" as CFString, &value)
+                if err == .success, let isFS = value as? Bool, !isFS {
+                    // Give the window a moment to settle into the desktop Space
+                    usleep(300_000)
+                    break
+                }
+            }
+            self.tile(window: window, to: position, on: screen)
+        }
+    }
+
     // MARK: - Save / Restore
 
     private func windowKey(for window: AXUIElement) -> Int {

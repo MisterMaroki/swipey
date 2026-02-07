@@ -17,6 +17,7 @@ final class GestureMonitor: @unchecked Sendable {
     private var trackedWindow: AXUIElement?
     private var targetScreen: NSScreen?
     private var lastResolvedPosition: TilePosition?
+    private var trackedWindowIsFullscreen = false
     private var cursorLocation: CGPoint = .zero
 
     /// Cooldown: ignore new gestures for a short period after tiling.
@@ -160,6 +161,7 @@ final class GestureMonitor: @unchecked Sendable {
 
         if let window = TitleBarDetector.detectWindow(at: mouseLocation) {
             trackedWindow = window
+            trackedWindowIsFullscreen = Self.isFullscreen(window)
             lastResolvedPosition = nil
             cursorLocation = mouseLocation
             stateMachine.begin()
@@ -202,8 +204,9 @@ final class GestureMonitor: @unchecked Sendable {
     }
 
     private func handleEnded() {
+        let wasCancelShowing = showingCancelPreview
         cancelInactivityTimer()
-        let position = stateMachine.resolvedPosition
+        let position = wasCancelShowing ? nil : stateMachine.resolvedPosition
         let window = trackedWindow
         let screen = targetScreen
 
@@ -215,11 +218,25 @@ final class GestureMonitor: @unchecked Sendable {
         defer {
             stateMachine.reset()
             trackedWindow = nil
+            trackedWindowIsFullscreen = false
             targetScreen = nil
             lastResolvedPosition = nil
         }
 
-        guard let window, let position else {
+        guard let window else {
+            return
+        }
+
+        // Fullscreen windows: exit fullscreen, then tile to resolved position
+        if trackedWindowIsFullscreen {
+            cooldownUntil = CFAbsoluteTimeGetCurrent() + cooldownDuration
+            let tilePosition = position ?? .restore
+            logger.warning("[Swipey] exiting fullscreen → \(String(describing: tilePosition))")
+            windowManager.exitFullscreenAndTile(window: window, to: tilePosition, on: screen)
+            return
+        }
+
+        guard let position else {
             return
         }
 
@@ -237,8 +254,20 @@ final class GestureMonitor: @unchecked Sendable {
         }
         stateMachine.reset()
         trackedWindow = nil
+        trackedWindowIsFullscreen = false
         targetScreen = nil
         lastResolvedPosition = nil
+    }
+
+    // MARK: - Fullscreen detection
+
+    private static func isFullscreen(_ window: AXUIElement) -> Bool {
+        var value: AnyObject?
+        let err = AXUIElementCopyAttributeValue(window, "AXFullScreen" as CFString, &value)
+        if err == .success, let isFS = value as? Bool, isFS {
+            return true
+        }
+        return false
     }
 
     // MARK: - Inactivity timer

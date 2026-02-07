@@ -57,7 +57,10 @@ final class GestureStateMachine {
         guard magnitude > deadZone else { return nil }
 
         if absY > absX {
-            // Vertical dominant
+            // Vertical dominant — check for compound horizontal movement (vertical halves)
+            if absX > compoundThreshold {
+                return cumulativeDeltaY < 0 ? .topHalf : .bottomHalf
+            }
             if cumulativeDeltaY < 0 {
                 return absY > fullscreenThreshold ? .fullscreen : .maximize
             } else {
