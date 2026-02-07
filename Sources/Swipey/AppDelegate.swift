@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController!
     private var windowManager: WindowManager!
     private var gestureMonitor: GestureMonitor!
+    private var previewOverlay: PreviewOverlay!
     private var permissionTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -15,7 +16,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         accessibilityManager = AccessibilityManager()
         statusBarController = StatusBarController(accessibilityManager: accessibilityManager)
         windowManager = WindowManager()
-        gestureMonitor = GestureMonitor(windowManager: windowManager)
+        previewOverlay = PreviewOverlay()
+        gestureMonitor = GestureMonitor(windowManager: windowManager, previewOverlay: previewOverlay)
         gestureMonitor.start()
 
         // Periodically re-check accessibility permission and update the status bar

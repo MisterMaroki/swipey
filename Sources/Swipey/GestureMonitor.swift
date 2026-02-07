@@ -4,14 +4,22 @@ import AppKit
 
 final class GestureMonitor: @unchecked Sendable {
     private let windowManager: WindowManager
+    private let previewOverlay: PreviewOverlay
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
     private var stateMachine = GestureStateMachine()
     private var trackedWindow: AXUIElement?
+    private var targetScreen: NSScreen?
+    private var lastResolvedPosition: TilePosition?
 
-    init(windowManager: WindowManager) {
+    /// Cooldown: ignore new gestures for a short period after tiling.
+    private var cooldownUntil: CFAbsoluteTime = 0
+    private let cooldownDuration: CFAbsoluteTime = 0.3
+
+    init(windowManager: WindowManager, previewOverlay: PreviewOverlay) {
         self.windowManager = windowManager
+        self.previewOverlay = previewOverlay
     }
 
     func start() {
@@ -58,39 +66,37 @@ final class GestureMonitor: @unchecked Sendable {
 
         // Only handle trackpad (continuous) scroll events
         let isContinuous = event.getIntegerValueField(.scrollWheelEventIsContinuous)
+        let phase = event.getIntegerValueField(.scrollWheelEventScrollPhase)
+        let momentumPhase = event.getIntegerValueField(.scrollWheelEventMomentumPhase)
+
+        // Skip momentum/inertia events
+        guard momentumPhase == 0 else {
+            // If we're tracking, consume momentum events too
+            if trackedWindow != nil { return nil }
+            return Unmanaged.passUnretained(event)
+        }
+
         guard isContinuous != 0 else {
             return Unmanaged.passUnretained(event)
         }
 
-        let phase = event.getIntegerValueField(.scrollWheelEventScrollPhase)
-
-        // Raw deltas from the event (pixel-based for trackpad)
-        let rawDeltaX = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis2)
-        let rawDeltaY = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis1)
-
-        // We want deltas to match the physical finger movement direction.
-        // With natural scrolling enabled, the system inverts deltas (content follows finger),
-        // so raw negative deltaY means fingers moved UP — which is what we want.
-        // With natural scrolling disabled, negative deltaY means scroll up (content moves up),
-        // which also corresponds to fingers moving up on the trackpad.
-        // Either way, negative deltaY = swipe up, negative deltaX = swipe left.
-        let deltaX = rawDeltaX
-        let deltaY = rawDeltaY
+        let deltaX = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis2)
+        let deltaY = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis1)
 
         switch phase {
-        case 1: // NSEventPhase.began
+        case 1: // began
             handleBegan(deltaX: deltaX, deltaY: deltaY, event: event)
-        case 2, 4: // NSEventPhase.stationary, .changed
+        case 2: // changed
             handleChanged(deltaX: deltaX, deltaY: deltaY)
-        case 8: // NSEventPhase.ended
+        case 4: // ended
             handleEnded()
-        case 16: // NSEventPhase.cancelled
+        case 8, 16: // cancelled
             handleCancelled()
         default:
             break
         }
 
-        // If we're actively tracking a gesture, consume the event so it doesn't scroll
+        // If we're actively tracking a gesture, consume the event
         if trackedWindow != nil {
             return nil
         }
@@ -99,37 +105,100 @@ final class GestureMonitor: @unchecked Sendable {
     }
 
     private func handleBegan(deltaX: Double, deltaY: Double, event: CGEvent) {
-        // Get cursor position from the event (CG coordinates, top-left origin)
+        // Check cooldown
+        if CFAbsoluteTimeGetCurrent() < cooldownUntil {
+            return
+        }
+
         let mouseLocation = event.location
 
-        // Check if cursor is over a title bar
+        // Determine target screen from cursor position
+        targetScreen = windowManager.screen(at: mouseLocation)
+
         if let window = TitleBarDetector.detectWindow(at: mouseLocation) {
             trackedWindow = window
+            lastResolvedPosition = nil
             stateMachine.begin()
             stateMachine.feed(deltaX: deltaX, deltaY: deltaY)
+            checkAndShowPreview()
         }
     }
 
     private func handleChanged(deltaX: Double, deltaY: Double) {
         guard trackedWindow != nil else { return }
+
+        let previousPosition = stateMachine.resolvedPosition
         stateMachine.feed(deltaX: deltaX, deltaY: deltaY)
+
+        let currentPosition = stateMachine.resolvedPosition
+
+        // Update preview if position changed
+        if currentPosition != previousPosition {
+            if currentPosition != nil {
+                checkAndShowPreview()
+            }
+        }
     }
 
     private func handleEnded() {
+        let position = stateMachine.resolvedPosition
+        let window = trackedWindow
+        let screen = targetScreen
+
+        // Hide preview
+        DispatchQueue.main.async { [weak self] in
+            self?.previewOverlay.hide()
+        }
+
         defer {
             stateMachine.reset()
             trackedWindow = nil
+            targetScreen = nil
+            lastResolvedPosition = nil
         }
 
-        guard let window = trackedWindow,
-              let position = stateMachine.resolvedPosition else { return }
+        guard let window, let position else {
+            return
+        }
 
-        windowManager.tile(window: window, to: position)
+        // Set cooldown
+        cooldownUntil = CFAbsoluteTimeGetCurrent() + cooldownDuration
+
+        print("[Swipey] tiling to \(position)")
+        windowManager.tile(window: window, to: position, on: screen)
     }
 
     private func handleCancelled() {
+        DispatchQueue.main.async { [weak self] in
+            self?.previewOverlay.hide()
+        }
         stateMachine.reset()
         trackedWindow = nil
+        targetScreen = nil
+        lastResolvedPosition = nil
+    }
+
+    // MARK: - Preview
+
+    private func checkAndShowPreview() {
+        guard let position = stateMachine.resolvedPosition,
+              let screen = targetScreen,
+              position.needsFrame else {
+            return
+        }
+
+        let nsFrame = position.frame(for: screen)
+        let newPosition = position
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            if self.lastResolvedPosition == nil {
+                self.previewOverlay.show(frame: nsFrame, on: screen)
+            } else {
+                self.previewOverlay.update(frame: nsFrame)
+            }
+            self.lastResolvedPosition = newPosition
+        }
     }
 
     deinit {

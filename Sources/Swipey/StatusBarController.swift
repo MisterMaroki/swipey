@@ -17,10 +17,33 @@ final class StatusBarController {
         }
 
         let menu = NSMenu()
-        menu.addItem(accessibilityMenuItem)
+
+        // Running label
+        let runningItem = NSMenuItem(title: "Swipey is running", action: nil, keyEquivalent: "")
+        runningItem.isEnabled = false
+        menu.addItem(runningItem)
+
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit Swipey", action: #selector(quit), keyEquivalent: "q"))
-        menu.items.last?.target = self
+
+        // Accessibility status
+        menu.addItem(accessibilityMenuItem)
+        let requestItem = NSMenuItem(title: "Request Access\u{2026}", action: #selector(requestAccess), keyEquivalent: "")
+        requestItem.target = self
+        menu.addItem(requestItem)
+
+        menu.addItem(.separator())
+
+        // About
+        let aboutItem = NSMenuItem(title: "About Swipey", action: #selector(showAbout), keyEquivalent: "")
+        aboutItem.target = self
+        menu.addItem(aboutItem)
+
+        menu.addItem(.separator())
+
+        // Quit
+        let quitItem = NSMenuItem(title: "Quit Swipey", action: #selector(quit), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
         statusItem.menu = menu
 
         updateAccessibilityLabel()
@@ -30,6 +53,19 @@ final class StatusBarController {
         accessibilityManager.recheckTrust()
         let status = accessibilityManager.isTrusted ? "Granted" : "Not Granted"
         accessibilityMenuItem.title = "Accessibility: \(status)"
+    }
+
+    @objc private func requestAccess() {
+        accessibilityManager.promptIfNeeded()
+    }
+
+    @objc private func showAbout() {
+        let alert = NSAlert()
+        alert.messageText = "Swipey"
+        alert.informativeText = "Version 1.0\n\nTwo-finger swipe window tiling for macOS."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     @objc private func quit() {
