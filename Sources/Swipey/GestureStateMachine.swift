@@ -13,8 +13,8 @@ final class GestureStateMachine {
 
     /// Cumulative delta threshold before the gesture activates.
     private let deadZone: Double = 30
-    /// Extended vertical threshold for fullscreen (2x dead zone).
-    private let fullscreenThreshold: Double = 60
+    /// Extended vertical threshold for fullscreen (requires a long deliberate swipe).
+    private let fullscreenThreshold: Double = 150
     /// Secondary axis threshold for compound gestures (quarter tiling).
     private let compoundThreshold: Double = 25
 
@@ -25,13 +25,13 @@ final class GestureStateMachine {
     }
 
     func feed(deltaX: Double, deltaY: Double) {
-        switch state {
-        case .idle:
-            return
-        case .tracking:
-            feedTracking(deltaX: deltaX, deltaY: deltaY)
-        case .resolved:
-            feedResolved(deltaX: deltaX, deltaY: deltaY)
+        guard state != .idle else { return }
+
+        cumulativeDeltaX += deltaX
+        cumulativeDeltaY += deltaY
+
+        if let position = resolveFromDeltas() {
+            state = .resolved(position)
         }
     }
 
@@ -48,111 +48,31 @@ final class GestureStateMachine {
 
     // MARK: - Private
 
-    private func feedTracking(deltaX: Double, deltaY: Double) {
-        cumulativeDeltaX += deltaX
-        cumulativeDeltaY += deltaY
-
+    /// Resolve a tile position from current cumulative deltas, or nil if still in dead zone.
+    private func resolveFromDeltas() -> TilePosition? {
         let absX = abs(cumulativeDeltaX)
         let absY = abs(cumulativeDeltaY)
         let magnitude = max(absX, absY)
 
-        guard magnitude > deadZone else { return }
+        guard magnitude > deadZone else { return nil }
 
         if absY > absX {
             // Vertical dominant
             if cumulativeDeltaY < 0 {
-                // Swipe up — check if past fullscreen threshold
-                if absY > fullscreenThreshold {
-                    state = .resolved(.fullscreen)
-                } else {
-                    state = .resolved(.maximize)
-                }
+                return absY > fullscreenThreshold ? .fullscreen : .maximize
             } else {
-                // Swipe down — restore
-                state = .resolved(.restore)
+                return .restore
             }
         } else {
-            // Horizontal dominant
-            if cumulativeDeltaX < 0 {
-                state = .resolved(.leftHalf)
-            } else {
-                state = .resolved(.rightHalf)
-            }
-        }
-    }
-
-    private func feedResolved(deltaX: Double, deltaY: Double) {
-        cumulativeDeltaX += deltaX
-        cumulativeDeltaY += deltaY
-
-        let absX = abs(cumulativeDeltaX)
-        let absY = abs(cumulativeDeltaY)
-
-        guard let currentPosition = resolvedPosition else { return }
-
-        switch currentPosition {
-        case .maximize:
-            // If vertical continues upward past fullscreen threshold, upgrade
-            if cumulativeDeltaY < 0 && absY > fullscreenThreshold {
-                state = .resolved(.fullscreen)
-            }
-
-        case .fullscreen:
-            // If vertical comes back under fullscreen threshold, downgrade to maximize
-            if cumulativeDeltaY < 0 && absY <= fullscreenThreshold && absY > deadZone {
-                state = .resolved(.maximize)
-            }
-
-        case .leftHalf:
-            // Check for compound vertical movement -> quarter
+            // Horizontal dominant — check for compound vertical movement (quarters)
             if absY > compoundThreshold {
-                if cumulativeDeltaY < 0 {
-                    state = .resolved(.topLeftQuarter)
+                if cumulativeDeltaX < 0 {
+                    return cumulativeDeltaY < 0 ? .topLeftQuarter : .bottomLeftQuarter
                 } else {
-                    state = .resolved(.bottomLeftQuarter)
+                    return cumulativeDeltaY < 0 ? .topRightQuarter : .bottomRightQuarter
                 }
             }
-
-        case .rightHalf:
-            if absY > compoundThreshold {
-                if cumulativeDeltaY < 0 {
-                    state = .resolved(.topRightQuarter)
-                } else {
-                    state = .resolved(.bottomRightQuarter)
-                }
-            }
-
-        case .topLeftQuarter:
-            // Allow switching between top/bottom quarters as vertical delta changes
-            if absX > absY || absY <= compoundThreshold {
-                state = .resolved(.leftHalf)
-            } else if cumulativeDeltaY > 0 {
-                state = .resolved(.bottomLeftQuarter)
-            }
-
-        case .bottomLeftQuarter:
-            if absX > absY || absY <= compoundThreshold {
-                state = .resolved(.leftHalf)
-            } else if cumulativeDeltaY < 0 {
-                state = .resolved(.topLeftQuarter)
-            }
-
-        case .topRightQuarter:
-            if absX > absY || absY <= compoundThreshold {
-                state = .resolved(.rightHalf)
-            } else if cumulativeDeltaY > 0 {
-                state = .resolved(.bottomRightQuarter)
-            }
-
-        case .bottomRightQuarter:
-            if absX > absY || absY <= compoundThreshold {
-                state = .resolved(.rightHalf)
-            } else if cumulativeDeltaY < 0 {
-                state = .resolved(.topRightQuarter)
-            }
-
-        case .restore:
-            break
+            return cumulativeDeltaX < 0 ? .leftHalf : .rightHalf
         }
     }
 }

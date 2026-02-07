@@ -4,9 +4,12 @@ import AppKit
 final class PreviewOverlay {
     private var overlayPanel: NSPanel?
     private var effectView: NSVisualEffectView?
+    private var hideGeneration: UInt = 0
 
     /// Show the overlay at the given frame (NSScreen coordinates, bottom-left origin).
     func show(frame: CGRect, on screen: NSScreen) {
+        hideGeneration &+= 1
+
         if overlayPanel == nil {
             createPanel()
         }
@@ -45,8 +48,10 @@ final class PreviewOverlay {
             panel.animator().alphaValue = 0
         }
 
-        // Order out after animation duration
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { @MainActor in
+        // Order out after animation duration; invalidated if show() is called before it fires
+        let gen = hideGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            guard let self, self.hideGeneration == gen else { return }
             panel.orderOut(nil)
         }
     }

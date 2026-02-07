@@ -32,32 +32,39 @@ enum TitleBarDetector {
         let role = attribute(of: element, key: kAXRoleAttribute) as? String
         let subrole = attribute(of: element, key: kAXSubroleAttribute) as? String
 
-        // Direct title bar subrole
+        // If hit test returns the window itself, cursor is on the non-content
+        // area (title bar / window frame)
+        if role == kAXWindowRole as String { return true }
         if subrole == "AXTitleBar" { return true }
 
-        // Window control buttons that live in the title bar
+        // Window control buttons
         let titleBarSubroles: Set<String> = [
-            "AXCloseButton",
-            "AXMinimizeButton",
-            "AXZoomButton",
-            "AXToolbarButton",
-            "AXFullScreenButton"
+            "AXCloseButton", "AXMinimizeButton", "AXZoomButton",
+            "AXToolbarButton", "AXFullScreenButton"
         ]
         if let subrole, titleBarSubroles.contains(subrole) { return true }
 
-        // Toolbar role (macOS unified title bar + toolbar)
+        // Toolbar role
         if role == "AXToolbar" { return true }
 
-        // Title bar group or static text inside the title bar
-        if role == "AXGroup" || role == "AXStaticText" || role == "AXImage" {
-            // Check if a parent is the title bar or toolbar
-            if let parent = attribute(of: element, key: kAXParentAttribute) {
-                let parentRole = attribute(of: parent as! AXUIElement, key: kAXRoleAttribute) as? String
-                let parentSubrole = attribute(of: parent as! AXUIElement, key: kAXSubroleAttribute) as? String
-                if parentSubrole == "AXTitleBar" || parentRole == "AXToolbar" {
-                    return true
-                }
+        // Walk up ancestors to check if any parent is a title bar, toolbar, or window
+        var current = element
+        for _ in 0..<5 {
+            guard let parent = attribute(of: current, key: kAXParentAttribute) as! AXUIElement? else {
+                break
             }
+            let parentRole = attribute(of: parent, key: kAXRoleAttribute) as? String
+            let parentSubrole = attribute(of: parent, key: kAXSubroleAttribute) as? String
+
+            if parentSubrole == "AXTitleBar" || parentRole == "AXToolbar" {
+                return true
+            }
+            // If parent is a window, the element is a direct child of the window
+            // (title text, groups, etc. in the title bar area)
+            if parentRole == kAXWindowRole as String {
+                return true
+            }
+            current = parent
         }
 
         return false

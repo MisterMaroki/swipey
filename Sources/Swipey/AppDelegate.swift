@@ -1,4 +1,7 @@
 import AppKit
+import os
+
+private let logger = Logger(subsystem: "com.swipey.app", category: "app")
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -7,23 +10,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var windowManager: WindowManager!
     private var gestureMonitor: GestureMonitor!
     private var previewOverlay: PreviewOverlay!
+    private var cursorIndicator: CursorIndicator!
     private var permissionTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Run as menu-bar-only agent (no dock icon)
         NSApplication.shared.setActivationPolicy(.accessory)
 
         accessibilityManager = AccessibilityManager()
         statusBarController = StatusBarController(accessibilityManager: accessibilityManager)
         windowManager = WindowManager()
         previewOverlay = PreviewOverlay()
-        gestureMonitor = GestureMonitor(windowManager: windowManager, previewOverlay: previewOverlay)
+        cursorIndicator = CursorIndicator()
+        gestureMonitor = GestureMonitor(windowManager: windowManager, previewOverlay: previewOverlay, cursorIndicator: cursorIndicator)
         gestureMonitor.start()
 
-        // Periodically re-check accessibility permission and update the status bar
+        // Periodically re-check accessibility and retry event tap if needed
         permissionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
-                self?.statusBarController.updateAccessibilityLabel()
+                guard let self else { return }
+                self.accessibilityManager.recheckTrust()
+                self.statusBarController.updateAccessibilityLabel()
+
+                // If permission was just granted but event tap isn't running, retry
+                if self.accessibilityManager.isTrusted && !self.gestureMonitor.isRunning {
+                    logger.warning("[Swipey] Accessibility granted — retrying event tap...")
+                    self.gestureMonitor.start()
+                }
             }
         }
     }
