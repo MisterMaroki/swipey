@@ -1,1209 +1,1940 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Swipey — Tile windows with a swipe</title>
-<meta name="description" content="Two-finger trackpad gestures on title bars to tile macOS windows. No keyboard shortcuts. No configuration. Just swipe.">
-<style>
-/* ═══════════════════════════════════════════
-   RESET & BASE
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Swipey — Tile windows with a swipe</title>
+		<meta
+			name="description"
+			content="Free, open-source macOS window tiling app. Two-finger trackpad gestures on title bars — no keyboard shortcuts, no configuration. Just swipe."
+		/>
+		<meta
+			name="keywords"
+			content="macOS, window manager, tiling, trackpad gestures, window snapping, open source, Swift, accessibility"
+		/>
+		<meta name="author" content="Omar Maroki" />
+		<meta name="theme-color" content="#FAFAFA" />
+		<link rel="canonical" href="https://swipey.app" />
+
+		<!-- Open Graph -->
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="Swipey — Tile windows with a swipe" />
+		<meta
+			property="og:description"
+			content="Free, open-source macOS window tiling app. Two-finger trackpad gestures on title bars — no keyboard shortcuts, no configuration."
+		/>
+		<meta property="og:url" content="https://swipey.app" />
+		<meta property="og:site_name" content="Swipey" />
+		<meta property="og:locale" content="en_US" />
+
+		<!-- Twitter Card -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="Swipey — Tile windows with a swipe" />
+		<meta
+			name="twitter:description"
+			content="Free, open-source macOS window tiling app. Two-finger trackpad gestures on title bars."
+		/>
+
+		<!-- Structured Data -->
+		<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "SoftwareApplication",
+				"name": "Swipey",
+				"operatingSystem": "macOS 14+",
+				"applicationCategory": "UtilitiesApplication",
+				"description": "Free, open-source macOS window tiling app. Two-finger trackpad gestures on title bars to tile windows instantly.",
+				"offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+				"author": { "@type": "Person", "name": "Omar Maroki" },
+				"url": "https://swipey.app",
+				"downloadUrl": "https://swipey.app/Swipey-v1.1.0.dmg",
+				"softwareVersion": "1.1.0",
+				"isAccessibleForFree": true,
+				"license": "https://github.com/MisterMaroki/swipey/blob/main/LICENSE"
+			}
+		</script>
+
+		<!-- Favicon -->
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+		<!-- Fonts -->
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap"
+			rel="stylesheet"
+		/>
+
+		<style>
+			/* ═══════════════════════════════════════════
+   RESET & TOKENS
    ═══════════════════════════════════════════ */
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+			*,
+			*::before,
+			*::after {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
 
-:root {
-  --bg: #0a0a0c;
-  --bg-card: rgba(255,255,255,0.04);
-  --border: rgba(255,255,255,0.08);
-  --text: #e5e5e7;
-  --text-dim: rgba(255,255,255,0.5);
-  --accent: #5e9eff;
-  --accent-glow: rgba(94,158,255,0.3);
-  --green: #32d74b;
-  --purple: #bf5af2;
-  --red: #ff453a;
-  --yellow: #ffd60a;
-  --radius: 16px;
-  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif;
-  --mono: 'SF Mono', SFMono-Regular, ui-monospace, 'Cascadia Code', 'Consolas', monospace;
-}
+			:root {
+				--white: #fafafa;
+				--black: #0a0a0a;
+				--gray-100: #f5f5f5;
+				--gray-200: #e5e5e5;
+				--gray-300: #d4d4d4;
+				--gray-400: #a3a3a3;
+				--gray-500: #737373;
+				--gray-600: #525252;
+				--gray-700: #404040;
+				--gray-800: #262626;
+				--gray-900: #171717;
 
-html { scroll-behavior: smooth; }
+				--font-serif: 'Instrument Serif', Georgia, serif;
+				--font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+				--font-mono:
+					'Geist Mono', 'SF Mono', SFMono-Regular, ui-monospace, Consolas,
+					monospace;
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font);
-  line-height: 1.6;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-}
+				--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+				--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+			}
 
-/* Film grain overlay */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9999;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 256px 256px;
-}
+			::selection {
+				background: var(--black);
+				color: var(--white);
+			}
 
-a { color: var(--accent); text-decoration: none; }
-a:hover { text-decoration: underline; }
+			html {
+				scroll-behavior: smooth;
+			}
 
-/* ═══════════════════════════════════════════
+			body {
+				background: var(--white);
+				color: var(--black);
+				font-family: var(--font-sans);
+				font-size: 16px;
+				line-height: 1.5;
+				overflow-x: hidden;
+				-webkit-font-smoothing: antialiased;
+				-moz-osx-font-smoothing: grayscale;
+			}
+
+			a {
+				color: var(--black);
+				text-decoration: none;
+			}
+			a:hover {
+				text-decoration: underline;
+			}
+
+			/* Focus */
+			:focus-visible {
+				outline: 2px solid var(--black);
+				outline-offset: 2px;
+			}
+
+			/* ═══════════════════════════════════════════
    SCROLL FADE-IN
    ═══════════════════════════════════════════ */
-.fade-in {
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-}
-.fade-in.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
+			.fade-in {
+				opacity: 0;
+				transform: translateY(16px);
+				transition:
+					opacity 0.5s var(--ease-out),
+					transform 0.5s var(--ease-out);
+			}
+			.fade-in.visible {
+				opacity: 1;
+				transform: translateY(0);
+			}
 
-/* ═══════════════════════════════════════════
+			/* ═══════════════════════════════════════════
    NAV
    ═══════════════════════════════════════════ */
-nav {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  z-index: 100;
-  padding: 16px 32px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  transition: background 0.3s, backdrop-filter 0.3s;
-}
-nav.scrolled {
-  background: rgba(10,10,12,0.8);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border);
-}
-nav .logo {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--text);
-}
-nav .nav-links { display: flex; gap: 28px; }
-nav .nav-links a {
-  color: var(--text-dim);
-  font-size: 14px;
-  font-weight: 500;
-  transition: color 0.2s;
-}
-nav .nav-links a:hover { color: var(--text); text-decoration: none; }
+			nav {
+				position: fixed;
+				top: 0;
+				left: 0;
+				right: 0;
+				z-index: 100;
+				padding: 20px 40px;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				transition: border-color 0.3s var(--ease-out);
+				border-bottom: 1px solid transparent;
+				background: var(--white);
+			}
+			nav.scrolled {
+				border-bottom-color: var(--gray-200);
+			}
+			nav .logo {
+				font-family: var(--font-mono);
+				font-size: 13px;
+				font-weight: 400;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--black);
+			}
+			nav .nav-links {
+				display: flex;
+				gap: 32px;
+			}
+			nav .nav-links a {
+				color: var(--gray-500);
+				font-size: 14px;
+				font-weight: 400;
+				letter-spacing: 0.025em;
+				transition: color 0.15s;
+			}
+			nav .nav-links a:hover {
+				color: var(--black);
+				text-decoration: none;
+			}
 
-/* ═══════════════════════════════════════════
+			/* ═══════════════════════════════════════════
    SECTION LAYOUT
    ═══════════════════════════════════════════ */
-section {
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 120px 32px;
-}
-.section-label {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 12px;
-}
-.section-title {
-  font-size: clamp(28px, 4vw, 40px);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  margin-bottom: 16px;
-}
-.section-sub {
-  font-size: 17px;
-  color: var(--text-dim);
-  max-width: 560px;
-  line-height: 1.6;
-}
+			section {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 120px 40px;
+			}
+			.section-label {
+				font-family: var(--font-mono);
+				font-size: 11px;
+				letter-spacing: 0.1em;
+				text-transform: uppercase;
+				color: var(--gray-500);
+				margin-bottom: 16px;
+			}
+			.section-title {
+				font-family: var(--font-serif);
+				font-style: italic;
+				font-size: clamp(32px, 5vw, 48px);
+				font-weight: 400;
+				letter-spacing: -0.02em;
+				line-height: 1.15;
+				margin-bottom: 16px;
+				color: var(--black);
+			}
+			.section-sub {
+				font-size: 16px;
+				color: var(--gray-600);
+				max-width: 560px;
+				line-height: 1.625;
+			}
 
-/* ═══════════════════════════════════════════
-   VIBRANCY CARD
+			/* ═══════════════════════════════════════════
+   CARD
    ═══════════════════════════════════════════ */
-.card {
-  background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 28px;
-}
+			.card {
+				border: 1px solid var(--gray-200);
+				padding: 28px;
+			}
 
-/* ═══════════════════════════════════════════
+			/* ═══════════════════════════════════════════
    HERO
    ═══════════════════════════════════════════ */
-.hero-wrap {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  position: relative;
-  overflow: hidden;
-}
-/* Radial gradient mesh behind hero */
-.hero-wrap::before {
-  content: '';
-  position: absolute;
-  width: 800px; height: 800px;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(ellipse at center, rgba(94,158,255,0.08) 0%, rgba(191,90,242,0.04) 40%, transparent 70%);
-  pointer-events: none;
-}
-.hero {
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 0 32px;
-  width: 100%;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 64px;
-  align-items: center;
-  position: relative;
-  z-index: 1;
-}
-.hero-text { max-width: 500px; }
-.hero h1 {
-  font-size: clamp(40px, 6vw, 64px);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1.05;
-  margin-bottom: 20px;
-}
-.hero p {
-  font-size: 18px;
-  color: var(--text-dim);
-  line-height: 1.65;
-  margin-bottom: 36px;
-  max-width: 420px;
-}
-.hero-version {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-top: 20px;
-}
-.hero-actions { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+			.hero-wrap {
+				min-height: 100vh;
+				display: flex;
+				align-items: center;
+				position: relative;
+			}
+			.hero {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 0 40px;
+				width: 100%;
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 80px;
+				align-items: center;
+			}
+			.hero-text {
+				max-width: 520px;
+			}
+			.hero h1 {
+				font-family: var(--font-serif);
+				font-style: italic;
+				font-size: clamp(44px, 6vw, 72px);
+				font-weight: 400;
+				letter-spacing: -0.02em;
+				line-height: 1.05;
+				margin-bottom: 24px;
+				color: var(--black);
+			}
+			.hero p {
+				font-size: 17px;
+				color: var(--gray-600);
+				line-height: 1.625;
+				margin-bottom: 40px;
+				max-width: 400px;
+			}
+			.hero-version {
+				font-family: var(--font-mono);
+				font-size: 11px;
+				letter-spacing: 0.025em;
+				color: var(--gray-400);
+				margin-top: 24px;
+			}
+			.hero-actions {
+				display: flex;
+				gap: 16px;
+				align-items: center;
+				flex-wrap: wrap;
+			}
 
-/* CTA BUTTON */
-.btn-primary {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 28px;
-  background: var(--accent);
-  color: #000;
-  font-size: 15px;
-  font-weight: 600;
-  border-radius: 12px;
-  border: none;
-  cursor: pointer;
-  text-decoration: none;
-  transition: transform 0.2s, filter 0.2s;
-  z-index: 1;
-}
-.btn-primary:hover { transform: translateY(-1px); filter: brightness(1.1); text-decoration: none; }
-/* Glow ring */
-.btn-primary::before {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 14px;
-  background: radial-gradient(circle, var(--accent-glow), transparent 70%);
-  z-index: -1;
-  opacity: 0.6;
-  animation: ctaGlow 3s ease-in-out infinite;
-}
-@keyframes ctaGlow {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.04); }
-}
+			/* Buttons */
+			.btn-primary {
+				display: inline-flex;
+				align-items: center;
+				gap: 8px;
+				padding: 14px 28px;
+				background: var(--black);
+				color: var(--white);
+				font-family: var(--font-sans);
+				font-size: 14px;
+				font-weight: 500;
+				letter-spacing: 0.025em;
+				border: 1px solid var(--black);
+				cursor: pointer;
+				text-decoration: none;
+				transition:
+					background 0.15s,
+					color 0.15s;
+			}
+			.btn-primary:hover {
+				background: var(--gray-800);
+				text-decoration: none;
+			}
+			.btn-primary svg {
+				stroke: currentColor;
+			}
 
-.btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 14px 24px;
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 15px;
-  font-weight: 500;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  cursor: pointer;
-  text-decoration: none;
-  transition: color 0.2s, border-color 0.2s;
-}
-.btn-secondary:hover { color: var(--text); border-color: rgba(255,255,255,0.2); text-decoration: none; }
+			.btn-secondary {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				padding: 14px 24px;
+				background: transparent;
+				color: var(--gray-600);
+				font-family: var(--font-sans);
+				font-size: 14px;
+				font-weight: 500;
+				letter-spacing: 0.025em;
+				border: 1px solid var(--gray-300);
+				cursor: pointer;
+				text-decoration: none;
+				transition:
+					color 0.15s,
+					border-color 0.15s;
+			}
+			.btn-secondary:hover {
+				color: var(--black);
+				border-color: var(--black);
+				text-decoration: none;
+			}
 
-/* ═══════════════════════════════════════════
+			/* ═══════════════════════════════════════════
    HERO ANIMATION
    ═══════════════════════════════════════════ */
-.hero-anim {
-  width: 100%;
-  max-width: 480px;
-  aspect-ratio: 4/3;
-  position: relative;
-  justify-self: center;
-}
-.screen-frame {
-  width: 100%;
-  height: 100%;
-  background: #1a1a1e;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.1);
-  position: relative;
-  overflow: hidden;
-}
-/* Fake window inside the screen */
-.fake-window {
-  position: absolute;
-  width: 60%;
-  height: 65%;
-  top: 17%;
-  left: 20%;
-  background: #2a2a2e;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.08);
-  animation: windowTile 8s cubic-bezier(0.33,1,0.68,1) infinite;
-}
-.fake-titlebar {
-  height: 28px;
-  background: #333338;
-  border-radius: 8px 8px 0 0;
-  display: flex;
-  align-items: center;
-  padding-left: 10px;
-  gap: 6px;
-}
-.tb-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-}
-.tb-dot.r { background: var(--red); }
-.tb-dot.y { background: var(--yellow); }
-.tb-dot.g { background: var(--green); }
-.fake-content {
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.fake-line {
-  height: 4px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 2px;
-}
-.fake-line:nth-child(1) { width: 80%; }
-.fake-line:nth-child(2) { width: 60%; }
-.fake-line:nth-child(3) { width: 70%; }
+			.hero-anim {
+				width: 100%;
+				max-width: 480px;
+				aspect-ratio: 4/3;
+				position: relative;
+				justify-self: center;
+			}
+			.screen-frame {
+				width: 100%;
+				height: 100%;
+				background: var(--gray-100);
+				border: 1px solid var(--gray-300);
+				position: relative;
+				overflow: hidden;
+			}
+			.fake-window {
+				position: absolute;
+				width: 60%;
+				height: 65%;
+				top: 17%;
+				left: 20%;
+				background: var(--white);
+				border: 1px solid var(--gray-300);
+				animation: windowTile 8s var(--ease-in-out) infinite;
+			}
+			.fake-titlebar {
+				height: 28px;
+				background: var(--gray-200);
+				display: flex;
+				align-items: center;
+				padding-left: 10px;
+				gap: 6px;
+			}
+			.tb-dot {
+				width: 8px;
+				height: 8px;
+				border-radius: 50%;
+				background: var(--gray-400);
+			}
+			.fake-content {
+				padding: 12px;
+				display: flex;
+				flex-direction: column;
+				gap: 6px;
+			}
+			.fake-line {
+				height: 4px;
+				background: var(--gray-200);
+			}
+			.fake-line:nth-child(1) {
+				width: 80%;
+			}
+			.fake-line:nth-child(2) {
+				width: 60%;
+			}
+			.fake-line:nth-child(3) {
+				width: 70%;
+			}
 
-/* Preview overlay */
-.preview-overlay {
-  position: absolute;
-  background: rgba(94,158,255,0.12);
-  border: 1.5px solid rgba(94,158,255,0.3);
-  border-radius: 8px;
-  opacity: 0;
-  animation: previewCycle 8s cubic-bezier(0.33,1,0.68,1) infinite;
-}
+			.preview-overlay {
+				position: absolute;
+				background: rgba(10, 10, 10, 0.06);
+				border: 1px solid rgba(10, 10, 10, 0.15);
+				opacity: 0;
+				animation: previewCycle 8s var(--ease-in-out) infinite;
+			}
 
-/* Finger dots */
-.finger-dots {
-  position: absolute;
-  display: flex;
-  gap: 10px;
-  opacity: 0;
-  z-index: 5;
-  animation: fingerCycle 8s cubic-bezier(0.33,1,0.68,1) infinite;
-}
-.finger-dot {
-  width: 14px; height: 14px;
-  background: rgba(255,255,255,0.7);
-  border-radius: 50%;
-  box-shadow: 0 0 12px rgba(255,255,255,0.3);
-}
+			.finger-dots {
+				position: absolute;
+				display: flex;
+				gap: 10px;
+				opacity: 0;
+				z-index: 5;
+				animation: fingerCycle 8s var(--ease-in-out) infinite;
+			}
+			.finger-dot {
+				width: 14px;
+				height: 14px;
+				background: var(--gray-700);
+				border-radius: 50%;
+			}
 
-@keyframes windowTile {
-  0%, 5%    { top: 17%; left: 20%; width: 60%; height: 65%; }
-  /* Swipe left → snap left half */
-  15%, 30%  { top: 17%; left: 20%; width: 60%; height: 65%; }
-  35%, 45%  { top: 0%; left: 0%; width: 50%; height: 100%; }
-  /* Swipe right → snap right half */
-  50%, 55%  { top: 0%; left: 0%; width: 50%; height: 100%; }
-  60%, 70%  { top: 0%; left: 50%; width: 50%; height: 100%; }
-  /* Swipe up → maximize */
-  75%, 80%  { top: 0%; left: 50%; width: 50%; height: 100%; }
-  85%, 95%  { top: 0%; left: 0%; width: 100%; height: 100%; border-radius: 0; }
-  /* Reset to center */
-  100%      { top: 17%; left: 20%; width: 60%; height: 65%; }
-}
+			@keyframes windowTile {
+				0%,
+				5% {
+					top: 17%;
+					left: 20%;
+					width: 60%;
+					height: 65%;
+				}
+				15%,
+				30% {
+					top: 17%;
+					left: 20%;
+					width: 60%;
+					height: 65%;
+				}
+				35%,
+				45% {
+					top: 0%;
+					left: 0%;
+					width: 50%;
+					height: 100%;
+				}
+				50%,
+				55% {
+					top: 0%;
+					left: 0%;
+					width: 50%;
+					height: 100%;
+				}
+				60%,
+				70% {
+					top: 0%;
+					left: 50%;
+					width: 50%;
+					height: 100%;
+				}
+				75%,
+				80% {
+					top: 0%;
+					left: 50%;
+					width: 50%;
+					height: 100%;
+				}
+				85%,
+				95% {
+					top: 0%;
+					left: 0%;
+					width: 100%;
+					height: 100%;
+				}
+				100% {
+					top: 17%;
+					left: 20%;
+					width: 60%;
+					height: 65%;
+				}
+			}
 
-@keyframes previewCycle {
-  0%, 14%   { opacity: 0; top: 0; left: 0; width: 50%; height: 100%; }
-  18%, 28%  { opacity: 1; top: 0; left: 0; width: 50%; height: 100%; }
-  33%, 34%  { opacity: 0; top: 0; left: 0; width: 50%; height: 100%; }
-  /* right preview */
-  48%, 49%  { opacity: 0; top: 0; left: 50%; width: 50%; height: 100%; }
-  53%, 58%  { opacity: 1; top: 0; left: 50%; width: 50%; height: 100%; }
-  62%, 63%  { opacity: 0; top: 0; left: 50%; width: 50%; height: 100%; }
-  /* maximize preview */
-  73%, 74%  { opacity: 0; top: 0; left: 0; width: 100%; height: 100%; }
-  78%, 83%  { opacity: 1; top: 0; left: 0; width: 100%; height: 100%; }
-  87%, 88%  { opacity: 0; top: 0; left: 0; width: 100%; height: 100%; }
-  100%      { opacity: 0; }
-}
+			@keyframes previewCycle {
+				0%,
+				14% {
+					opacity: 0;
+					top: 0;
+					left: 0;
+					width: 50%;
+					height: 100%;
+				}
+				18%,
+				28% {
+					opacity: 1;
+					top: 0;
+					left: 0;
+					width: 50%;
+					height: 100%;
+				}
+				33%,
+				34% {
+					opacity: 0;
+					top: 0;
+					left: 0;
+					width: 50%;
+					height: 100%;
+				}
+				48%,
+				49% {
+					opacity: 0;
+					top: 0;
+					left: 50%;
+					width: 50%;
+					height: 100%;
+				}
+				53%,
+				58% {
+					opacity: 1;
+					top: 0;
+					left: 50%;
+					width: 50%;
+					height: 100%;
+				}
+				62%,
+				63% {
+					opacity: 0;
+					top: 0;
+					left: 50%;
+					width: 50%;
+					height: 100%;
+				}
+				73%,
+				74% {
+					opacity: 0;
+					top: 0;
+					left: 0;
+					width: 100%;
+					height: 100%;
+				}
+				78%,
+				83% {
+					opacity: 1;
+					top: 0;
+					left: 0;
+					width: 100%;
+					height: 100%;
+				}
+				87%,
+				88% {
+					opacity: 0;
+					top: 0;
+					left: 0;
+					width: 100%;
+					height: 100%;
+				}
+				100% {
+					opacity: 0;
+				}
+			}
 
-@keyframes fingerCycle {
-  0%, 12%   { opacity: 0; top: 22%; left: 42%; }
-  14%       { opacity: 1; top: 22%; left: 42%; }
-  18%       { opacity: 1; top: 22%; left: 25%; }
-  22%, 30%  { opacity: 0; top: 22%; left: 25%; }
-  /* swipe right */
-  46%       { opacity: 0; top: 8%; left: 15%; }
-  48%       { opacity: 1; top: 8%; left: 15%; }
-  52%       { opacity: 1; top: 8%; left: 55%; }
-  56%, 64%  { opacity: 0; top: 8%; left: 55%; }
-  /* swipe up */
-  72%       { opacity: 0; top: 12%; left: 65%; }
-  74%       { opacity: 1; top: 12%; left: 65%; }
-  78%       { opacity: 1; top: 2%; left: 65%; }
-  82%, 100% { opacity: 0; top: 2%; left: 65%; }
-}
+			@keyframes fingerCycle {
+				0%,
+				12% {
+					opacity: 0;
+					top: 22%;
+					left: 42%;
+				}
+				14% {
+					opacity: 1;
+					top: 22%;
+					left: 42%;
+				}
+				18% {
+					opacity: 1;
+					top: 22%;
+					left: 25%;
+				}
+				22%,
+				30% {
+					opacity: 0;
+					top: 22%;
+					left: 25%;
+				}
+				46% {
+					opacity: 0;
+					top: 8%;
+					left: 15%;
+				}
+				48% {
+					opacity: 1;
+					top: 8%;
+					left: 15%;
+				}
+				52% {
+					opacity: 1;
+					top: 8%;
+					left: 55%;
+				}
+				56%,
+				64% {
+					opacity: 0;
+					top: 8%;
+					left: 55%;
+				}
+				72% {
+					opacity: 0;
+					top: 12%;
+					left: 65%;
+				}
+				74% {
+					opacity: 1;
+					top: 12%;
+					left: 65%;
+				}
+				78% {
+					opacity: 1;
+					top: 2%;
+					left: 65%;
+				}
+				82%,
+				100% {
+					opacity: 0;
+					top: 2%;
+					left: 65%;
+				}
+			}
 
-/* ═══════════════════════════════════════════
+			/* ═══════════════════════════════════════════
+   DIVIDER
+   ═══════════════════════════════════════════ */
+			.divider {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 0 40px;
+			}
+			.divider hr {
+				border: none;
+				border-top: 1px solid var(--gray-200);
+			}
+
+			/* ═══════════════════════════════════════════
    HOW IT WORKS — 3 CARDS
    ═══════════════════════════════════════════ */
-.steps-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  margin-top: 48px;
-}
-.step-card {
-  padding: 32px 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.step-card .step-icon {
-  width: 56px; height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.step-card h3 {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.step-card p {
-  font-size: 15px;
-  color: var(--text-dim);
-  line-height: 1.55;
-  flex: 1;
-}
-.step-footnote {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-dim);
-  opacity: 0.7;
-  margin-top: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
+			.steps-grid {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 1px;
+				margin-top: 48px;
+				background: var(--gray-200);
+				border: 1px solid var(--gray-200);
+			}
+			.step-card {
+				padding: 32px 28px;
+				display: flex;
+				flex-direction: column;
+				gap: 16px;
+				background: var(--white);
+				border: none;
+			}
+			.step-card .step-icon {
+				width: 56px;
+				height: 56px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			.step-card h3 {
+				font-family: var(--font-serif);
+				font-style: italic;
+				font-size: 20px;
+				font-weight: 400;
+				letter-spacing: -0.02em;
+			}
+			.step-card p {
+				font-size: 14px;
+				color: var(--gray-600);
+				line-height: 1.625;
+				flex: 1;
+			}
+			.step-footnote {
+				font-family: var(--font-mono);
+				font-size: 11px;
+				color: var(--gray-400);
+				margin-top: 8px;
+				padding-top: 12px;
+				border-top: 1px solid var(--gray-200);
+			}
 
-/* Dead zone animation */
-.deadzone-viz {
-  width: 56px; height: 56px;
-  position: relative;
-}
-.dz-ring {
-  cx: 28; cy: 28; r: 20;
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 1.5;
-  opacity: 0.3;
-  transition: opacity 0.3s;
-}
-.dz-ring.active {
-  animation: dzPulse 0.6s ease-out;
-}
-@keyframes dzPulse {
-  0% { opacity: 0.3; stroke-width: 1.5; }
-  50% { opacity: 1; stroke-width: 3; }
-  100% { opacity: 0.3; stroke-width: 1.5; }
-}
-.dz-dot {
-  fill: var(--accent);
-  r: 3;
-}
-.dz-dot.animating {
-  animation: dzDotMove 2s ease-in-out infinite;
-}
-@keyframes dzDotMove {
-  0%, 100% { cx: 28; cy: 28; }
-  30% { cx: 28; cy: 28; }
-  60% { cx: 28; cy: 8; }
-  80% { cx: 28; cy: 8; }
-}
-.dz-arrow {
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-.dz-arrow.active {
-  opacity: 1;
-}
+			/* Dead zone animation */
+			.deadzone-viz {
+				width: 56px;
+				height: 56px;
+				position: relative;
+			}
+			.dz-ring {
+				cx: 28;
+				cy: 28;
+				r: 20;
+				fill: none;
+				stroke: var(--gray-400);
+				stroke-width: 1.5;
+				opacity: 0.4;
+				transition: opacity 0.3s;
+			}
+			.dz-ring.active {
+				animation: dzPulse 0.6s ease-out;
+			}
+			@keyframes dzPulse {
+				0% {
+					opacity: 0.4;
+					stroke-width: 1.5;
+				}
+				50% {
+					opacity: 1;
+					stroke-width: 3;
+				}
+				100% {
+					opacity: 0.4;
+					stroke-width: 1.5;
+				}
+			}
+			.dz-dot {
+				fill: var(--black);
+				r: 3;
+			}
+			.dz-dot.animating {
+				animation: dzDotMove 2s ease-in-out infinite;
+			}
+			@keyframes dzDotMove {
+				0%,
+				100% {
+					cx: 28;
+					cy: 28;
+				}
+				30% {
+					cx: 28;
+					cy: 28;
+				}
+				60% {
+					cx: 28;
+					cy: 8;
+				}
+				80% {
+					cx: 28;
+					cy: 8;
+				}
+			}
+			.dz-arrow {
+				opacity: 0;
+				transition: opacity 0.3s;
+			}
+			.dz-arrow.active {
+				opacity: 1;
+			}
 
-/* ═══════════════════════════════════════════
+			/* ═══════════════════════════════════════════
    TILING POSITIONS GRID
    ═══════════════════════════════════════════ */
-.positions-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 16px;
-  margin-top: 48px;
-}
-.positions-grid .row-2 {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-.positions-grid .row-3 {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  max-width: 40%;
-}
-.pos-card {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  cursor: default;
-  transition: border-color 0.2s;
-}
-.pos-card:hover { border-color: rgba(94,158,255,0.25); }
-.pos-card svg { width: 64px; height: 44px; }
-.pos-card .pos-fill {
-  fill: rgba(94,158,255,0.15);
-  stroke: var(--accent);
-  stroke-width: 0.5;
-  transition: fill 0.3s ease;
-}
-.pos-card:hover .pos-fill {
-  fill: rgba(94,158,255,0.35);
-}
-.pos-card .pos-frame {
-  fill: none;
-  stroke: rgba(255,255,255,0.15);
-  stroke-width: 0.8;
-  rx: 2;
-}
-.pos-label {
-  font-size: 13px;
-  font-weight: 500;
-  text-align: center;
-}
-.pos-gesture {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-dim);
-}
+			.positions-grid {
+				display: grid;
+				grid-template-columns: repeat(5, 1fr);
+				gap: 1px;
+				margin-top: 48px;
+				background: var(--gray-200);
+				border: 1px solid var(--gray-200);
+			}
+			.positions-grid .row-2 {
+				grid-column: 1 / -1;
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: 1px;
+				background: var(--gray-200);
+			}
+			.positions-grid .row-3 {
+				grid-column: 1 / -1;
+				display: grid;
+				grid-template-columns: repeat(2, 1fr);
+				gap: 1px;
+				max-width: 40%;
+				background: var(--gray-200);
+			}
+			.pos-card {
+				padding: 20px;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 12px;
+				cursor: default;
+				background: var(--white);
+				border: none;
+				transition: background 0.15s;
+			}
+			.pos-card:hover {
+				background: var(--gray-100);
+			}
+			.pos-card svg {
+				width: 64px;
+				height: 44px;
+			}
+			.pos-card .pos-fill {
+				fill: rgba(10, 10, 10, 0.08);
+				stroke: var(--gray-700);
+				stroke-width: 0.5;
+				transition: fill 0.15s;
+			}
+			.pos-card:hover .pos-fill {
+				fill: rgba(10, 10, 10, 0.15);
+			}
+			.pos-card .pos-frame {
+				fill: none;
+				stroke: var(--gray-300);
+				stroke-width: 0.8;
+				rx: 0;
+			}
+			.pos-label {
+				font-size: 13px;
+				font-weight: 500;
+				text-align: center;
+			}
+			.pos-gesture {
+				font-family: var(--font-mono);
+				font-size: 11px;
+				color: var(--gray-500);
+			}
 
-/* ═══════════════════════════════════════════
+			/* ═══════════════════════════════════════════
    UNDER THE HOOD
    ═══════════════════════════════════════════ */
-.hood-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-top: 48px;
-}
-.hood-card {
-  padding: 28px;
-}
-.hood-card h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 20px;
-  letter-spacing: -0.01em;
-}
-.hood-card.full-width {
-  grid-column: 1 / -1;
-}
+			.hood-grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 1px;
+				margin-top: 48px;
+				background: var(--gray-200);
+				border: 1px solid var(--gray-200);
+			}
+			.hood-card {
+				padding: 28px;
+				background: var(--white);
+				border: none;
+			}
+			.hood-card h3 {
+				font-family: var(--font-serif);
+				font-style: italic;
+				font-size: 18px;
+				font-weight: 400;
+				margin-bottom: 20px;
+				letter-spacing: -0.02em;
+			}
+			.hood-card.full-width {
+				grid-column: 1 / -1;
+			}
 
-/* Architecture diagram */
-.arch-diagram {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: flex-start;
-  justify-content: center;
-}
-.arch-box {
-  font-family: var(--mono);
-  font-size: 11px;
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.03);
-  text-align: center;
-  position: relative;
-}
-.arch-box.accent { border-color: rgba(94,158,255,0.3); color: var(--accent); }
-.arch-box.purple { border-color: rgba(191,90,242,0.3); color: var(--purple); }
-.arch-box.green { border-color: rgba(50,215,75,0.3); color: var(--green); }
-.arch-arrow {
-  font-family: var(--mono);
-  font-size: 14px;
-  color: var(--text-dim);
-  display: flex;
-  align-items: center;
-}
-.arch-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.arch-sub {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.arch-connector {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--text-dim);
-  text-align: center;
-  padding: 4px 0;
-}
+			/* Architecture diagram */
+			.arch-diagram {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 12px;
+				align-items: flex-start;
+				justify-content: center;
+			}
+			.arch-box {
+				font-family: var(--font-mono);
+				font-size: 11px;
+				padding: 10px 14px;
+				border: 1px solid var(--gray-300);
+				background: var(--white);
+				text-align: center;
+				position: relative;
+				color: var(--black);
+			}
+			.arch-box.accent {
+				border-color: var(--black);
+			}
+			.arch-box.purple {
+				border-color: var(--gray-600);
+				color: var(--gray-700);
+			}
+			.arch-box.green {
+				border-color: var(--gray-400);
+				color: var(--gray-600);
+			}
+			.arch-arrow {
+				font-family: var(--font-mono);
+				font-size: 14px;
+				color: var(--gray-400);
+				display: flex;
+				align-items: center;
+			}
+			.arch-row {
+				display: flex;
+				gap: 10px;
+				align-items: center;
+				justify-content: center;
+				flex-wrap: wrap;
+			}
+			.arch-sub {
+				display: flex;
+				gap: 10px;
+				margin-top: 10px;
+				justify-content: center;
+				flex-wrap: wrap;
+			}
+			.arch-connector {
+				font-family: var(--font-mono);
+				font-size: 11px;
+				color: var(--gray-400);
+				text-align: center;
+				padding: 4px 0;
+				letter-spacing: 0.025em;
+			}
 
-/* State machine */
-.state-diagram {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  padding: 16px 0;
-}
-.state-node {
-  font-family: var(--mono);
-  font-size: 12px;
-  padding: 10px 18px;
-  border-radius: 20px;
-  border: 1.5px solid var(--border);
-  color: var(--text-dim);
-  transition: all 0.4s;
-}
-.state-node.active {
-  border-color: var(--purple);
-  color: var(--purple);
-  background: rgba(191,90,242,0.08);
-  box-shadow: 0 0 20px rgba(191,90,242,0.15);
-}
-.state-arrow {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--text-dim);
-}
+			/* State machine */
+			.state-diagram {
+				display: flex;
+				gap: 16px;
+				align-items: center;
+				justify-content: center;
+				flex-wrap: wrap;
+				padding: 16px 0;
+			}
+			.state-node {
+				font-family: var(--font-mono);
+				font-size: 12px;
+				padding: 10px 18px;
+				border: 1.5px solid var(--gray-300);
+				color: var(--gray-500);
+				transition: all 0.3s var(--ease-out);
+			}
+			.state-node.active {
+				border-color: var(--black);
+				color: var(--black);
+				background: var(--gray-100);
+			}
+			.state-arrow {
+				font-family: var(--font-mono);
+				font-size: 12px;
+				color: var(--gray-400);
+			}
 
-/* Coordinate system */
-.coord-pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 16px;
-}
-.coord-box {
-  text-align: center;
-}
-.coord-box svg { width: 100%; max-width: 180px; height: 120px; }
-.coord-label {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text-dim);
-  margin-top: 8px;
-}
-.coord-formula {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--accent);
-  text-align: center;
-  padding: 10px;
-  background: rgba(94,158,255,0.06);
-  border-radius: 8px;
-  border: 1px solid rgba(94,158,255,0.15);
-}
+			/* Coordinate system */
+			.coord-pair {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 20px;
+				margin-bottom: 16px;
+			}
+			.coord-box {
+				text-align: center;
+			}
+			.coord-box svg {
+				width: 100%;
+				max-width: 180px;
+				height: 120px;
+			}
+			.coord-label {
+				font-family: var(--font-mono);
+				font-size: 11px;
+				color: var(--gray-500);
+				margin-top: 8px;
+			}
+			.coord-formula {
+				font-family: var(--font-mono);
+				font-size: 12px;
+				color: var(--black);
+				text-align: center;
+				padding: 10px;
+				background: var(--gray-100);
+				border: 1px solid var(--gray-200);
+			}
 
-/* Code block */
-.code-block {
-  background: rgba(0,0,0,0.4);
-  border-radius: 10px;
-  padding: 20px;
-  overflow-x: auto;
-  border: 1px solid var(--border);
-}
-.code-block pre {
-  font-family: var(--mono);
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--text-dim);
-}
-.code-block .kw { color: var(--purple); }
-.code-block .fn { color: var(--accent); }
-.code-block .cm { color: rgba(255,255,255,0.25); }
-.code-block .st { color: var(--green); }
-.code-block .nr { color: #ff9f0a; }
+			/* Code block */
+			.code-block {
+				background: var(--gray-100);
+				padding: 20px;
+				overflow-x: auto;
+				border: 1px solid var(--gray-200);
+			}
+			.code-block pre {
+				font-family: var(--font-mono);
+				font-size: 12px;
+				line-height: 1.7;
+				color: var(--gray-600);
+			}
+			.code-block .kw {
+				color: var(--black);
+				font-weight: 600;
+			}
+			.code-block .fn {
+				color: var(--gray-700);
+			}
+			.code-block .cm {
+				color: var(--gray-400);
+			}
+			.code-block .st {
+				color: var(--gray-600);
+				font-style: italic;
+			}
+			.code-block .nr {
+				color: var(--gray-500);
+			}
 
-/* ═══════════════════════════════════════════
+			/* ═══════════════════════════════════════════
    STATE MACHINE ANIMATION — 4s cycle
    ═══════════════════════════════════════════ */
-.sm-idle    { animation: smCycle 4s infinite; animation-delay: 0s; }
-.sm-tracking { animation: smCycle 4s infinite; animation-delay: 1.33s; }
-.sm-resolved { animation: smCycle 4s infinite; animation-delay: 2.66s; }
+			.sm-idle {
+				animation: smCycle 4s infinite;
+				animation-delay: 0s;
+			}
+			.sm-tracking {
+				animation: smCycle 4s infinite;
+				animation-delay: 1.33s;
+			}
+			.sm-resolved {
+				animation: smCycle 4s infinite;
+				animation-delay: 2.66s;
+			}
 
-@keyframes smCycle {
-  0%, 25%  { border-color: var(--purple); color: var(--purple); background: rgba(191,90,242,0.08); box-shadow: 0 0 20px rgba(191,90,242,0.15); }
-  33%, 100% { border-color: var(--border); color: var(--text-dim); background: transparent; box-shadow: none; }
-}
+			@keyframes smCycle {
+				0%,
+				25% {
+					border-color: var(--black);
+					color: var(--black);
+					background: var(--gray-100);
+				}
+				33%,
+				100% {
+					border-color: var(--gray-300);
+					color: var(--gray-500);
+					background: transparent;
+				}
+			}
 
-/* ═══════════════════════════════════════════
+			/* ═══════════════════════════════════════════
    DOWNLOAD / FOOTER
    ═══════════════════════════════════════════ */
-.download-section {
-  text-align: center;
-  padding-bottom: 60px;
-}
-.download-section .section-sub {
-  margin: 0 auto 40px;
-}
-.download-section .section-title {
-  margin-bottom: 12px;
-}
-.download-btn-wrap {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 32px;
-}
-.badges {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
-}
-.badge {
-  font-family: var(--mono);
-  font-size: 12px;
-  padding: 6px 14px;
-  border-radius: 20px;
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-}
-.badge.green {
-  border-color: rgba(50,215,75,0.3);
-  color: var(--green);
-}
-.requirements {
-  font-size: 13px;
-  color: var(--text-dim);
-  margin-bottom: 60px;
-}
+			.download-section {
+				text-align: center;
+				padding-bottom: 60px;
+			}
+			.download-section .section-sub {
+				margin: 0 auto 40px;
+			}
+			.download-section .section-title {
+				margin-bottom: 12px;
+			}
+			.download-btn-wrap {
+				display: flex;
+				justify-content: center;
+				margin-bottom: 32px;
+			}
+			.badges {
+				display: flex;
+				gap: 12px;
+				justify-content: center;
+				flex-wrap: wrap;
+				margin-bottom: 20px;
+			}
+			.badge {
+				font-family: var(--font-mono);
+				font-size: 11px;
+				letter-spacing: 0.025em;
+				padding: 6px 14px;
+				border: 1px solid var(--gray-300);
+				color: var(--gray-500);
+			}
+			.badge.green {
+				border-color: var(--gray-700);
+				color: var(--black);
+			}
+			.requirements {
+				font-size: 13px;
+				color: var(--gray-500);
+				margin-bottom: 60px;
+			}
 
-footer {
-  text-align: center;
-  padding: 32px;
-  border-top: 1px solid var(--border);
-  font-size: 13px;
-  color: var(--text-dim);
-}
+			footer {
+				text-align: center;
+				padding: 40px;
+				border-top: 1px solid var(--gray-200);
+				font-family: var(--font-mono);
+				font-size: 11px;
+				letter-spacing: 0.025em;
+				color: var(--gray-400);
+			}
+			footer a {
+				color: var(--gray-400);
+				transition: color 0.15s;
+			}
+			footer a:hover {
+				color: var(--black);
+			}
 
-/* ═══════════════════════════════════════════
+			/* ═══════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════ */
-@media (max-width: 768px) {
-  nav .nav-links { gap: 16px; }
-  nav .nav-links a { font-size: 13px; }
+			@media (max-width: 768px) {
+				nav {
+					padding: 16px 24px;
+				}
+				nav .nav-links {
+					gap: 20px;
+				}
+				nav .nav-links a {
+					font-size: 13px;
+				}
 
-  .hero {
-    grid-template-columns: 1fr;
-    gap: 48px;
-    text-align: center;
-  }
-  .hero-text { max-width: 100%; }
-  .hero p { max-width: 100%; }
-  .hero-actions { justify-content: center; }
-  .hero-anim { max-width: 360px; }
+				section {
+					padding: 80px 24px;
+				}
 
-  .steps-grid { grid-template-columns: 1fr 1fr; }
+				.hero {
+					grid-template-columns: 1fr;
+					gap: 48px;
+					text-align: center;
+				}
+				.hero-text {
+					max-width: 100%;
+				}
+				.hero p {
+					max-width: 100%;
+				}
+				.hero-actions {
+					justify-content: center;
+				}
+				.hero-anim {
+					max-width: 360px;
+				}
 
-  .positions-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-  .positions-grid .row-2 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .positions-grid .row-3 {
-    max-width: 66%;
-  }
+				.steps-grid {
+					grid-template-columns: 1fr 1fr;
+				}
 
-  .hood-grid { grid-template-columns: 1fr; }
+				.positions-grid {
+					grid-template-columns: repeat(3, 1fr);
+				}
+				.positions-grid .row-2 {
+					grid-template-columns: repeat(2, 1fr);
+				}
+				.positions-grid .row-3 {
+					max-width: 66%;
+				}
 
-  .coord-pair { grid-template-columns: 1fr; }
-}
+				.hood-grid {
+					grid-template-columns: 1fr;
+				}
 
-@media (max-width: 480px) {
-  section { padding: 80px 20px; }
-  nav { padding: 12px 20px; }
-  nav .nav-links { gap: 12px; }
+				.coord-pair {
+					grid-template-columns: 1fr;
+				}
 
-  .hero { gap: 36px; }
-  .hero-anim { max-width: 280px; }
+				.divider {
+					padding: 0 24px;
+				}
+			}
 
-  .steps-grid { grid-template-columns: 1fr; }
+			@media (max-width: 480px) {
+				section {
+					padding: 64px 20px;
+				}
+				nav {
+					padding: 12px 20px;
+				}
+				nav .nav-links {
+					gap: 12px;
+				}
 
-  .positions-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .positions-grid .row-2 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .positions-grid .row-3 {
-    max-width: 100%;
-  }
+				.hero {
+					gap: 36px;
+				}
+				.hero-anim {
+					max-width: 280px;
+				}
 
-  .arch-row { flex-direction: column; }
-  .state-diagram { flex-direction: column; }
-}
-</style>
-</head>
-<body>
+				.steps-grid {
+					grid-template-columns: 1fr;
+				}
 
-<!-- ═══════════════════════════════════════════
+				.positions-grid {
+					grid-template-columns: repeat(2, 1fr);
+				}
+				.positions-grid .row-2 {
+					grid-template-columns: repeat(2, 1fr);
+				}
+				.positions-grid .row-3 {
+					max-width: 100%;
+				}
+
+				.arch-row {
+					flex-direction: column;
+				}
+				.state-diagram {
+					flex-direction: column;
+				}
+
+				.divider {
+					padding: 0 20px;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<!-- ═══════════════════════════════════════════
      NAV
      ═══════════════════════════════════════════ -->
-<nav id="nav">
-  <div class="logo">Swipey</div>
-  <div class="nav-links">
-    <a href="#how">How it works</a>
-    <a href="#positions">Positions</a>
-    <a href="#hood">Under the hood</a>
-    <a href="#download">Download</a>
-  </div>
-</nav>
+		<nav id="nav">
+			<div class="logo">Swipey</div>
+			<div class="nav-links">
+				<a href="#how">How it works</a>
+				<a href="#positions">Positions</a>
+				<a href="#hood">Under the hood</a>
+				<a href="#download">Download</a>
+				<a
+					href="https://github.com/MisterMaroki/swipey"
+					target="_blank"
+					rel="noopener"
+					>GitHub</a
+				>
+			</div>
+		</nav>
 
-<!-- ═══════════════════════════════════════════
+		<!-- ═══════════════════════════════════════════
      HERO
      ═══════════════════════════════════════════ -->
-<div class="hero-wrap">
-  <div class="hero">
-    <div class="hero-text">
-      <h1>Tile windows<br>with a swipe.</h1>
-      <p>Two-finger trackpad gestures on title bars. No keyboard shortcuts. No configuration. Just swipe.</p>
-      <div class="hero-actions">
-        <a href="/Swipey-1.0.dmg" class="btn-primary">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2v10m0 0l-3.5-3.5M9 12l3.5-3.5M3 15h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Download for macOS
-        </a>
-        <a href="#how" class="btn-secondary">How it works ↓</a>
-      </div>
-      <div class="hero-version">v1.0 · macOS 14 Sonoma+ · Universal Binary</div>
-    </div>
-    <div class="hero-anim">
-      <div class="screen-frame">
-        <div class="fake-window">
-          <div class="fake-titlebar">
-            <span class="tb-dot r"></span>
-            <span class="tb-dot y"></span>
-            <span class="tb-dot g"></span>
-          </div>
-          <div class="fake-content">
-            <div class="fake-line"></div>
-            <div class="fake-line"></div>
-            <div class="fake-line"></div>
-          </div>
-        </div>
-        <div class="preview-overlay"></div>
-        <div class="finger-dots">
-          <div class="finger-dot"></div>
-          <div class="finger-dot"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+		<div class="hero-wrap">
+			<div class="hero">
+				<div class="hero-text">
+					<h1>Tile windows<br />with a swipe.</h1>
+					<p>
+						Two-finger trackpad gestures on title bars. No keyboard shortcuts.
+						No configuration. Just swipe.
+					</p>
+					<div class="hero-actions">
+						<a href="/Swipey-v1.1.0.dmg" class="btn-primary">
+							<svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+								<path
+									d="M9 2v10m0 0l-3.5-3.5M9 12l3.5-3.5M3 15h12"
+									stroke="currentColor"
+									stroke-width="1.5"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
+							</svg>
+							Download for macOS
+						</a>
+						<a href="#how" class="btn-secondary">How it works</a>
+					</div>
+					<div class="hero-version">
+						v1.1.0 &middot; macOS 14 Sonoma+ &middot; Universal Binary
+					</div>
+				</div>
+				<div class="hero-anim">
+					<div class="screen-frame">
+						<div class="fake-window">
+							<div class="fake-titlebar">
+								<span class="tb-dot"></span>
+								<span class="tb-dot"></span>
+								<span class="tb-dot"></span>
+							</div>
+							<div class="fake-content">
+								<div class="fake-line"></div>
+								<div class="fake-line"></div>
+								<div class="fake-line"></div>
+							</div>
+						</div>
+						<div class="preview-overlay"></div>
+						<div class="finger-dots">
+							<div class="finger-dot"></div>
+							<div class="finger-dot"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
 
-<!-- ═══════════════════════════════════════════
+		<!-- ═══════════════════════════════════════════
      HOW IT WORKS
      ═══════════════════════════════════════════ -->
-<section id="how">
-  <div class="fade-in">
-    <div class="section-label">How it works</div>
-    <div class="section-title">Three steps. Zero setup.</div>
-    <div class="section-sub">Swipey intercepts trackpad scroll events at the system level, detects title bars via accessibility, and tiles windows instantly.</div>
-  </div>
+		<div class="divider"><hr /></div>
+		<section id="how">
+			<div class="fade-in">
+				<div class="section-label">How it works</div>
+				<div class="section-title">Three steps. Zero setup.</div>
+				<div class="section-sub">
+					Swipey intercepts trackpad scroll events at the system level, detects
+					title bars via accessibility, and tiles windows instantly.
+				</div>
+			</div>
 
-  <div class="steps-grid">
-    <!-- Card 1: Swipe on a title bar -->
-    <div class="card step-card fade-in">
-      <div class="step-icon">
-        <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
-          <rect x="8" y="12" width="40" height="32" rx="4" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" fill="none"/>
-          <rect x="8" y="12" width="40" height="10" rx="4" fill="rgba(94,158,255,0.15)" stroke="rgba(94,158,255,0.4)" stroke-width="1"/>
-          <circle cx="14" cy="17" r="2" fill="var(--red)"/>
-          <circle cx="20" cy="17" r="2" fill="var(--yellow)"/>
-          <circle cx="26" cy="17" r="2" fill="var(--green)"/>
-          <!-- gesture arrows -->
-          <circle cx="36" cy="17" r="3" fill="rgba(255,255,255,0.6)"/>
-          <circle cx="42" cy="17" r="3" fill="rgba(255,255,255,0.6)"/>
-          <path d="M34 17h-6" stroke="rgba(255,255,255,0.4)" stroke-width="1" stroke-linecap="round" stroke-dasharray="2 2"/>
-        </svg>
-      </div>
-      <h3>Swipe on a title bar</h3>
-      <p>Place two fingers on any window's title bar and swipe in the direction you want it tiled. Swipey detects the gesture at the system level.</p>
-      <div class="step-footnote">CGEvent.tapCreate(.cgSessionEventTap, ...)</div>
-    </div>
+			<div class="steps-grid">
+				<!-- Card 1: Swipe on a title bar -->
+				<div class="step-card fade-in">
+					<div class="step-icon">
+						<svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+							<rect
+								x="8"
+								y="12"
+								width="40"
+								height="32"
+								rx="0"
+								stroke="var(--gray-300)"
+								stroke-width="1.5"
+								fill="none"
+							/>
+							<rect
+								x="8"
+								y="12"
+								width="40"
+								height="10"
+								rx="0"
+								fill="var(--gray-100)"
+								stroke="var(--gray-400)"
+								stroke-width="1"
+							/>
+							<circle cx="14" cy="17" r="2" fill="var(--gray-400)" />
+							<circle cx="20" cy="17" r="2" fill="var(--gray-400)" />
+							<circle cx="26" cy="17" r="2" fill="var(--gray-400)" />
+							<circle cx="36" cy="17" r="3" fill="var(--gray-600)" />
+							<circle cx="42" cy="17" r="3" fill="var(--gray-600)" />
+							<path
+								d="M34 17h-6"
+								stroke="var(--gray-400)"
+								stroke-width="1"
+								stroke-linecap="round"
+								stroke-dasharray="2 2"
+							/>
+						</svg>
+					</div>
+					<h3>Swipe on a title bar</h3>
+					<p>
+						Place two fingers on any window's title bar and swipe in the
+						direction you want it tiled. Swipey detects the gesture at the
+						system level.
+					</p>
+					<div class="step-footnote">
+						CGEvent.tapCreate(.cgSessionEventTap, ...)
+					</div>
+				</div>
 
-    <!-- Card 2: Dead zone, then snap -->
-    <div class="card step-card fade-in" id="deadzone-card">
-      <div class="step-icon">
-        <svg class="deadzone-viz" width="56" height="56" viewBox="0 0 56 56" fill="none">
-          <circle class="dz-ring" cx="28" cy="28" r="20"/>
-          <circle class="dz-dot" cx="28" cy="28" r="3"/>
-          <!-- Arrow (up) -->
-          <g class="dz-arrow">
-            <path d="M28 6V2M28 2l-3 3M28 2l3 3" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
-          </g>
-        </svg>
-      </div>
-      <h3>Dead zone, then snap</h3>
-      <p>A 30-point dead zone prevents accidental tiles. Once you cross the threshold, Swipey locks in your direction and shows a live preview.</p>
-      <div class="step-footnote">deadZone: 30pt | compound: 25pt | fullscreen: 150pt</div>
-    </div>
+				<!-- Card 2: Dead zone, then snap -->
+				<div class="step-card fade-in" id="deadzone-card">
+					<div class="step-icon">
+						<svg
+							class="deadzone-viz"
+							width="56"
+							height="56"
+							viewBox="0 0 56 56"
+							fill="none"
+						>
+							<circle class="dz-ring" cx="28" cy="28" r="20" />
+							<circle class="dz-dot" cx="28" cy="28" r="3" />
+							<g class="dz-arrow">
+								<path
+									d="M28 6V2M28 2l-3 3M28 2l3 3"
+									stroke="var(--black)"
+									stroke-width="1.5"
+									stroke-linecap="round"
+								/>
+							</g>
+						</svg>
+					</div>
+					<h3>Dead zone, then snap</h3>
+					<p>
+						A 30-point dead zone prevents accidental tiles. Once you cross the
+						threshold, Swipey locks in your direction and shows a live preview.
+					</p>
+					<div class="step-footnote">
+						deadZone: 30pt | compound: 25pt | fullscreen: 150pt
+					</div>
+				</div>
 
-    <!-- Card 3: Preview and tile -->
-    <div class="card step-card fade-in">
-      <div class="step-icon">
-        <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
-          <!-- Preview overlay -->
-          <rect x="4" y="8" width="24" height="40" rx="4" fill="rgba(94,158,255,0.1)" stroke="rgba(94,158,255,0.3)" stroke-width="1"/>
-          <!-- Window snapping into place -->
-          <rect x="8" y="12" width="16" height="32" rx="2" fill="rgba(94,158,255,0.06)" stroke="rgba(94,158,255,0.2)" stroke-width="0.8" stroke-dasharray="3 2"/>
-          <!-- Arrow showing snap -->
-          <path d="M38 28H30" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
-          <path d="M32 25l-3 3 3 3" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <!-- Original window position -->
-          <rect x="34" y="14" width="18" height="28" rx="3" stroke="rgba(255,255,255,0.12)" stroke-width="1" fill="none"/>
-        </svg>
-      </div>
-      <h3>Preview and tile</h3>
-      <p>A translucent preview overlay shows where the window will land. Release the gesture and the window snaps into place instantly.</p>
-      <div class="step-footnote">NSPanel + NSVisualEffectView(.hudWindow)</div>
-    </div>
-  </div>
-</section>
+				<!-- Card 3: Preview and tile -->
+				<div class="step-card fade-in">
+					<div class="step-icon">
+						<svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+							<rect
+								x="4"
+								y="8"
+								width="24"
+								height="40"
+								rx="0"
+								fill="var(--gray-100)"
+								stroke="var(--gray-400)"
+								stroke-width="1"
+							/>
+							<rect
+								x="8"
+								y="12"
+								width="16"
+								height="32"
+								rx="0"
+								fill="none"
+								stroke="var(--gray-300)"
+								stroke-width="0.8"
+								stroke-dasharray="3 2"
+							/>
+							<path
+								d="M38 28H30"
+								stroke="var(--black)"
+								stroke-width="1.5"
+								stroke-linecap="round"
+							/>
+							<path
+								d="M32 25l-3 3 3 3"
+								stroke="var(--black)"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
+							<rect
+								x="34"
+								y="14"
+								width="18"
+								height="28"
+								rx="0"
+								stroke="var(--gray-300)"
+								stroke-width="1"
+								fill="none"
+							/>
+						</svg>
+					</div>
+					<h3>Preview and tile</h3>
+					<p>
+						A translucent preview overlay shows where the window will land.
+						Release the gesture and the window snaps into place instantly.
+					</p>
+					<div class="step-footnote">
+						NSPanel + NSVisualEffectView(.hudWindow)
+					</div>
+				</div>
+			</div>
+		</section>
 
-<!-- ═══════════════════════════════════════════
+		<!-- ═══════════════════════════════════════════
      TILING POSITIONS
      ═══════════════════════════════════════════ -->
-<section id="positions">
-  <div class="fade-in">
-    <div class="section-label">Tiling positions</div>
-    <div class="section-title">Eleven positions. Any direction.</div>
-    <div class="section-sub">Halves, quarters, maximize, fullscreen — every standard tiling layout, triggered by intuitive swipe gestures.</div>
-  </div>
+		<div class="divider"><hr /></div>
+		<section id="positions">
+			<div class="fade-in">
+				<div class="section-label">Tiling positions</div>
+				<div class="section-title">Eleven positions. Any direction.</div>
+				<div class="section-sub">
+					Halves, quarters, maximize, fullscreen — every standard tiling layout,
+					triggered by intuitive swipe gestures.
+				</div>
+			</div>
 
-  <div class="positions-grid fade-in">
-    <!-- Row 1: Halves + Maximize -->
-    <div class="card pos-card">
-      <svg viewBox="0 0 64 44"><rect class="pos-frame" x="1" y="1" width="62" height="42" rx="3"/><rect class="pos-fill" x="1" y="1" width="31" height="42" rx="3"/></svg>
-      <div class="pos-label">Left Half</div>
-      <div class="pos-gesture">← swipe left</div>
-    </div>
-    <div class="card pos-card">
-      <svg viewBox="0 0 64 44"><rect class="pos-frame" x="1" y="1" width="62" height="42" rx="3"/><rect class="pos-fill" x="32" y="1" width="31" height="42" rx="3"/></svg>
-      <div class="pos-label">Right Half</div>
-      <div class="pos-gesture">→ swipe right</div>
-    </div>
-    <div class="card pos-card">
-      <svg viewBox="0 0 64 44"><rect class="pos-frame" x="1" y="1" width="62" height="42" rx="3"/><rect class="pos-fill" x="1" y="1" width="62" height="21" rx="3"/></svg>
-      <div class="pos-label">Top Half</div>
-      <div class="pos-gesture">↑ swipe up</div>
-    </div>
-    <div class="card pos-card">
-      <svg viewBox="0 0 64 44"><rect class="pos-frame" x="1" y="1" width="62" height="42" rx="3"/><rect class="pos-fill" x="1" y="22" width="62" height="21" rx="3"/></svg>
-      <div class="pos-label">Bottom Half</div>
-      <div class="pos-gesture">↓ swipe down</div>
-    </div>
-    <div class="card pos-card">
-      <svg viewBox="0 0 64 44"><rect class="pos-frame" x="1" y="1" width="62" height="42" rx="3"/><rect class="pos-fill" x="1" y="1" width="62" height="42" rx="3"/></svg>
-      <div class="pos-label">Maximize</div>
-      <div class="pos-gesture">↑ swipe up ×2</div>
-    </div>
+			<div class="positions-grid fade-in">
+				<!-- Row 1: Halves + Maximize -->
+				<div class="pos-card">
+					<svg viewBox="0 0 64 44">
+						<rect class="pos-frame" x="1" y="1" width="62" height="42" />
+						<rect class="pos-fill" x="1" y="1" width="31" height="42" />
+					</svg>
+					<div class="pos-label">Left Half</div>
+					<div class="pos-gesture">&larr; swipe left</div>
+				</div>
+				<div class="pos-card">
+					<svg viewBox="0 0 64 44">
+						<rect class="pos-frame" x="1" y="1" width="62" height="42" />
+						<rect class="pos-fill" x="32" y="1" width="31" height="42" />
+					</svg>
+					<div class="pos-label">Right Half</div>
+					<div class="pos-gesture">&rarr; swipe right</div>
+				</div>
+				<div class="pos-card">
+					<svg viewBox="0 0 64 44">
+						<rect class="pos-frame" x="1" y="1" width="62" height="42" />
+						<rect class="pos-fill" x="1" y="1" width="62" height="21" />
+					</svg>
+					<div class="pos-label">Top Half</div>
+					<div class="pos-gesture">&uarr; swipe up</div>
+				</div>
+				<div class="pos-card">
+					<svg viewBox="0 0 64 44">
+						<rect class="pos-frame" x="1" y="1" width="62" height="42" />
+						<rect class="pos-fill" x="1" y="22" width="62" height="21" />
+					</svg>
+					<div class="pos-label">Bottom Half</div>
+					<div class="pos-gesture">&darr; swipe down</div>
+				</div>
+				<div class="pos-card">
+					<svg viewBox="0 0 64 44">
+						<rect class="pos-frame" x="1" y="1" width="62" height="42" />
+						<rect class="pos-fill" x="1" y="1" width="62" height="42" />
+					</svg>
+					<div class="pos-label">Maximize</div>
+					<div class="pos-gesture">&uarr; swipe up &times;2</div>
+				</div>
 
-    <!-- Row 2: Quarters -->
-    <div class="row-2">
-      <div class="card pos-card">
-        <svg viewBox="0 0 64 44"><rect class="pos-frame" x="1" y="1" width="62" height="42" rx="3"/><rect class="pos-fill" x="1" y="1" width="31" height="21" rx="3"/></svg>
-        <div class="pos-label">Top-Left</div>
-        <div class="pos-gesture">↖ diagonal</div>
-      </div>
-      <div class="card pos-card">
-        <svg viewBox="0 0 64 44"><rect class="pos-frame" x="1" y="1" width="62" height="42" rx="3"/><rect class="pos-fill" x="32" y="1" width="31" height="21" rx="3"/></svg>
-        <div class="pos-label">Top-Right</div>
-        <div class="pos-gesture">↗ diagonal</div>
-      </div>
-      <div class="card pos-card">
-        <svg viewBox="0 0 64 44"><rect class="pos-frame" x="1" y="1" width="62" height="42" rx="3"/><rect class="pos-fill" x="1" y="22" width="31" height="21" rx="3"/></svg>
-        <div class="pos-label">Bottom-Left</div>
-        <div class="pos-gesture">↙ diagonal</div>
-      </div>
-      <div class="card pos-card">
-        <svg viewBox="0 0 64 44"><rect class="pos-frame" x="1" y="1" width="62" height="42" rx="3"/><rect class="pos-fill" x="32" y="22" width="31" height="21" rx="3"/></svg>
-        <div class="pos-label">Bottom-Right</div>
-        <div class="pos-gesture">↘ diagonal</div>
-      </div>
-    </div>
+				<!-- Row 2: Quarters -->
+				<div class="row-2">
+					<div class="pos-card">
+						<svg viewBox="0 0 64 44">
+							<rect class="pos-frame" x="1" y="1" width="62" height="42" />
+							<rect class="pos-fill" x="1" y="1" width="31" height="21" />
+						</svg>
+						<div class="pos-label">Top-Left</div>
+						<div class="pos-gesture">&nwarr; diagonal</div>
+					</div>
+					<div class="pos-card">
+						<svg viewBox="0 0 64 44">
+							<rect class="pos-frame" x="1" y="1" width="62" height="42" />
+							<rect class="pos-fill" x="32" y="1" width="31" height="21" />
+						</svg>
+						<div class="pos-label">Top-Right</div>
+						<div class="pos-gesture">&nearr; diagonal</div>
+					</div>
+					<div class="pos-card">
+						<svg viewBox="0 0 64 44">
+							<rect class="pos-frame" x="1" y="1" width="62" height="42" />
+							<rect class="pos-fill" x="1" y="22" width="31" height="21" />
+						</svg>
+						<div class="pos-label">Bottom-Left</div>
+						<div class="pos-gesture">&swarr; diagonal</div>
+					</div>
+					<div class="pos-card">
+						<svg viewBox="0 0 64 44">
+							<rect class="pos-frame" x="1" y="1" width="62" height="42" />
+							<rect class="pos-fill" x="32" y="22" width="31" height="21" />
+						</svg>
+						<div class="pos-label">Bottom-Right</div>
+						<div class="pos-gesture">&searr; diagonal</div>
+					</div>
+				</div>
 
-    <!-- Row 3: Fullscreen + Restore -->
-    <div class="row-3">
-      <div class="card pos-card">
-        <svg viewBox="0 0 64 44"><rect class="pos-fill" x="0" y="0" width="64" height="44" rx="0"/></svg>
-        <div class="pos-label">Fullscreen</div>
-        <div class="pos-gesture">↑ swipe up ×3</div>
-      </div>
-      <div class="card pos-card">
-        <svg viewBox="0 0 64 44"><rect class="pos-frame" x="1" y="1" width="62" height="42" rx="3"/><rect x="14" y="8" width="36" height="28" rx="2" fill="none" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="3 2"/><path d="M20 22h24M32 14v16" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></svg>
-        <div class="pos-label">Restore</div>
-        <div class="pos-gesture">↓ swipe down ×2</div>
-      </div>
-    </div>
-  </div>
-</section>
+				<!-- Row 3: Fullscreen + Restore -->
+				<div class="row-3">
+					<div class="pos-card">
+						<svg viewBox="0 0 64 44">
+							<rect
+								class="pos-fill"
+								x="0"
+								y="0"
+								width="64"
+								height="44"
+								rx="0"
+							/>
+						</svg>
+						<div class="pos-label">Fullscreen</div>
+						<div class="pos-gesture">&uarr; swipe up &times;3</div>
+					</div>
+					<div class="pos-card">
+						<svg viewBox="0 0 64 44">
+							<rect class="pos-frame" x="1" y="1" width="62" height="42" />
+							<rect
+								x="14"
+								y="8"
+								width="36"
+								height="28"
+								rx="0"
+								fill="none"
+								stroke="var(--gray-700)"
+								stroke-width="0.8"
+								stroke-dasharray="3 2"
+							/>
+							<path
+								d="M20 22h24M32 14v16"
+								stroke="var(--gray-200)"
+								stroke-width="0.5"
+							/>
+						</svg>
+						<div class="pos-label">Restore</div>
+						<div class="pos-gesture">&darr; swipe down &times;2</div>
+					</div>
+				</div>
+			</div>
+		</section>
 
-<!-- ═══════════════════════════════════════════
+		<!-- ═══════════════════════════════════════════
      UNDER THE HOOD
      ═══════════════════════════════════════════ -->
-<section id="hood">
-  <div class="fade-in">
-    <div class="section-label">Under the hood</div>
-    <div class="section-title">System-level engineering.</div>
-    <div class="section-sub">Swipey is built on macOS accessibility and event APIs — no hacks, no injection, no private frameworks.</div>
-  </div>
+		<div class="divider"><hr /></div>
+		<section id="hood">
+			<div class="fade-in">
+				<div class="section-label">Under the hood</div>
+				<div class="section-title">System-level engineering.</div>
+				<div class="section-sub">
+					Swipey is built on macOS accessibility and event APIs — no hacks, no
+					injection, no private frameworks.
+				</div>
+			</div>
 
-  <div class="hood-grid">
-    <!-- Architecture diagram -->
-    <div class="card hood-card full-width fade-in">
-      <h3>Architecture</h3>
-      <div class="arch-row">
-        <div class="arch-box accent">CGEventTap</div>
-        <div class="arch-arrow">→</div>
-        <div class="arch-box">TitleBarDetector</div>
-        <div class="arch-arrow">→</div>
-        <div class="arch-box purple">GestureStateMachine</div>
-        <div class="arch-arrow">→</div>
-        <div class="arch-box green">WindowManager</div>
-      </div>
-      <div class="arch-sub">
-        <div class="arch-box" style="margin-left: auto; margin-right: 20px;">PreviewOverlay</div>
-        <div class="arch-box" style="margin-right: auto; margin-left: 20px;">CursorIndicator</div>
-        <div class="arch-box green" style="margin-left: 40px;">AXUIElement</div>
-      </div>
-      <div class="arch-connector">↑ driven by state transitions ↑</div>
-    </div>
+			<div class="hood-grid">
+				<!-- Architecture diagram -->
+				<div class="hood-card full-width fade-in">
+					<h3>Architecture</h3>
+					<div class="arch-row">
+						<div class="arch-box accent">CGEventTap</div>
+						<div class="arch-arrow">&rarr;</div>
+						<div class="arch-box">TitleBarDetector</div>
+						<div class="arch-arrow">&rarr;</div>
+						<div class="arch-box purple">GestureStateMachine</div>
+						<div class="arch-arrow">&rarr;</div>
+						<div class="arch-box green">WindowManager</div>
+					</div>
+					<div class="arch-sub">
+						<div class="arch-box" style="margin-left: auto; margin-right: 20px">
+							PreviewOverlay
+						</div>
+						<div class="arch-box" style="margin-right: auto; margin-left: 20px">
+							CursorIndicator
+						</div>
+						<div class="arch-box green" style="margin-left: 40px">
+							AXUIElement
+						</div>
+					</div>
+					<div class="arch-connector">
+						&uarr; driven by state transitions &uarr;
+					</div>
+				</div>
 
-    <!-- State machine -->
-    <div class="card hood-card fade-in">
-      <h3>Gesture State Machine</h3>
-      <div class="state-diagram">
-        <div class="state-node sm-idle">idle</div>
-        <div class="state-arrow">→</div>
-        <div class="state-node sm-tracking">tracking</div>
-        <div class="state-arrow">→</div>
-        <div class="state-node sm-resolved">resolved</div>
-      </div>
-      <p style="font-size:13px; color:var(--text-dim); text-align:center; margin-top:12px;">
-        began → accumulate deltas → cross dead zone → lock direction → ended → tile
-      </p>
-    </div>
+				<!-- State machine -->
+				<div class="hood-card fade-in">
+					<h3>Gesture State Machine</h3>
+					<div class="state-diagram">
+						<div class="state-node sm-idle">idle</div>
+						<div class="state-arrow">&rarr;</div>
+						<div class="state-node sm-tracking">tracking</div>
+						<div class="state-arrow">&rarr;</div>
+						<div class="state-node sm-resolved">resolved</div>
+					</div>
+					<p
+						style="
+							font-size: 13px;
+							color: var(--gray-500);
+							text-align: center;
+							margin-top: 12px;
+						"
+					>
+						began &rarr; accumulate deltas &rarr; cross dead zone &rarr; lock
+						direction &rarr; ended &rarr; tile
+					</p>
+				</div>
 
-    <!-- Coordinate systems -->
-    <div class="card hood-card fade-in">
-      <h3>Coordinate Systems</h3>
-      <div class="coord-pair">
-        <div class="coord-box">
-          <svg viewBox="0 0 180 120">
-            <rect x="10" y="10" width="160" height="100" rx="4" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
-            <!-- Y axis pointing up -->
-            <line x1="30" y1="95" x2="30" y2="25" stroke="var(--accent)" stroke-width="1.5"/>
-            <path d="M30 25l-4 8h8z" fill="var(--accent)"/>
-            <!-- X axis -->
-            <line x1="30" y1="95" x2="150" y2="95" stroke="var(--accent)" stroke-width="1.5"/>
-            <path d="M150 95l-8-4v8z" fill="var(--accent)"/>
-            <!-- Labels -->
-            <text x="18" y="22" font-family="var(--mono)" font-size="10" fill="var(--accent)">Y</text>
-            <text x="154" y="99" font-family="var(--mono)" font-size="10" fill="var(--accent)">X</text>
-            <!-- Origin dot -->
-            <circle cx="30" cy="95" r="3" fill="var(--accent)"/>
-            <text x="34" y="108" font-family="var(--mono)" font-size="9" fill="var(--text-dim)">(0,0)</text>
-          </svg>
-          <div class="coord-label">NSScreen — bottom-left origin</div>
-        </div>
-        <div class="coord-box">
-          <svg viewBox="0 0 180 120">
-            <rect x="10" y="10" width="160" height="100" rx="4" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
-            <!-- Y axis pointing down -->
-            <line x1="30" y1="25" x2="30" y2="95" stroke="var(--green)" stroke-width="1.5"/>
-            <path d="M30 95l-4-8h8z" fill="var(--green)"/>
-            <!-- X axis -->
-            <line x1="30" y1="25" x2="150" y2="25" stroke="var(--green)" stroke-width="1.5"/>
-            <path d="M150 25l-8-4v8z" fill="var(--green)"/>
-            <!-- Labels -->
-            <text x="18" y="100" font-family="var(--mono)" font-size="10" fill="var(--green)">Y</text>
-            <text x="154" y="29" font-family="var(--mono)" font-size="10" fill="var(--green)">X</text>
-            <!-- Origin dot -->
-            <circle cx="30" cy="25" r="3" fill="var(--green)"/>
-            <text x="34" y="20" font-family="var(--mono)" font-size="9" fill="var(--text-dim)">(0,0)</text>
-          </svg>
-          <div class="coord-label">CG / Accessibility — top-left origin</div>
-        </div>
-      </div>
-      <div class="coord-formula">cgY = mainScreen.height - nsY</div>
-    </div>
+				<!-- Coordinate systems -->
+				<div class="hood-card fade-in">
+					<h3>Coordinate Systems</h3>
+					<div class="coord-pair">
+						<div class="coord-box">
+							<svg viewBox="0 0 180 120">
+								<rect
+									x="10"
+									y="10"
+									width="160"
+									height="100"
+									rx="0"
+									fill="none"
+									stroke="var(--gray-300)"
+									stroke-width="1"
+								/>
+								<line
+									x1="30"
+									y1="95"
+									x2="30"
+									y2="25"
+									stroke="var(--black)"
+									stroke-width="1.5"
+								/>
+								<path d="M30 25l-4 8h8z" fill="var(--black)" />
+								<line
+									x1="30"
+									y1="95"
+									x2="150"
+									y2="95"
+									stroke="var(--black)"
+									stroke-width="1.5"
+								/>
+								<path d="M150 95l-8-4v8z" fill="var(--black)" />
+								<text
+									x="18"
+									y="22"
+									font-family="var(--font-mono)"
+									font-size="10"
+									fill="var(--black)"
+								>
+									Y
+								</text>
+								<text
+									x="154"
+									y="99"
+									font-family="var(--font-mono)"
+									font-size="10"
+									fill="var(--black)"
+								>
+									X
+								</text>
+								<circle cx="30" cy="95" r="3" fill="var(--black)" />
+								<text
+									x="34"
+									y="108"
+									font-family="var(--font-mono)"
+									font-size="9"
+									fill="var(--gray-500)"
+								>
+									(0,0)
+								</text>
+							</svg>
+							<div class="coord-label">NSScreen — bottom-left origin</div>
+						</div>
+						<div class="coord-box">
+							<svg viewBox="0 0 180 120">
+								<rect
+									x="10"
+									y="10"
+									width="160"
+									height="100"
+									rx="0"
+									fill="none"
+									stroke="var(--gray-300)"
+									stroke-width="1"
+								/>
+								<line
+									x1="30"
+									y1="25"
+									x2="30"
+									y2="95"
+									stroke="var(--gray-600)"
+									stroke-width="1.5"
+								/>
+								<path d="M30 95l-4-8h8z" fill="var(--gray-600)" />
+								<line
+									x1="30"
+									y1="25"
+									x2="150"
+									y2="25"
+									stroke="var(--gray-600)"
+									stroke-width="1.5"
+								/>
+								<path d="M150 25l-8-4v8z" fill="var(--gray-600)" />
+								<text
+									x="18"
+									y="100"
+									font-family="var(--font-mono)"
+									font-size="10"
+									fill="var(--gray-600)"
+								>
+									Y
+								</text>
+								<text
+									x="154"
+									y="29"
+									font-family="var(--font-mono)"
+									font-size="10"
+									fill="var(--gray-600)"
+								>
+									X
+								</text>
+								<circle cx="30" cy="25" r="3" fill="var(--gray-600)" />
+								<text
+									x="34"
+									y="20"
+									font-family="var(--font-mono)"
+									font-size="9"
+									fill="var(--gray-500)"
+								>
+									(0,0)
+								</text>
+							</svg>
+							<div class="coord-label">
+								CG / Accessibility — top-left origin
+							</div>
+						</div>
+					</div>
+					<div class="coord-formula">cgY = mainScreen.height - nsY</div>
+				</div>
 
-    <!-- Event pipeline -->
-    <div class="card hood-card full-width fade-in">
-      <h3>Event Pipeline</h3>
-      <div class="code-block"><pre><span class="cm">// Swipey event pipeline — from hardware to tiled window</span>
+				<!-- Event pipeline -->
+				<div class="hood-card full-width fade-in">
+					<h3>Event Pipeline</h3>
+					<div class="code-block">
+						<pre><span class="cm">// Swipey event pipeline — from hardware to tiled window</span>
 
 <span class="kw">CGEventTap</span>.<span class="fn">intercept</span>(scrollWheel)          <span class="cm">// 1. Capture trackpad scroll</span>
-  → <span class="kw">filter</span>  isContinuous &amp;&amp; phase != <span class="nr">0</span>      <span class="cm">// 2. Reject mouse wheel events</span>
-  → <span class="kw">TitleBarDetector</span>.<span class="fn">hitTest</span>(mouseLocation) <span class="cm">// 3. AXUIElement under cursor?</span>
-  → <span class="kw">GestureStateMachine</span>.<span class="fn">feed</span>(delta, phase)  <span class="cm">// 4. Accumulate, dead zone, lock</span>
-  → <span class="kw">PreviewOverlay</span>.<span class="fn">show</span>(targetFrame)        <span class="cm">// 5. Translucent preview panel</span>
-  → <span class="kw">CursorIndicator</span>.<span class="fn">show</span>(direction)         <span class="cm">// 6. Direction badge at cursor</span>
-  → <span class="kw">WindowManager</span>.<span class="fn">tile</span>(window, position)    <span class="cm">// 7. AXPosition + AXSize</span>
-  → <span class="kw">return</span> <span class="st">nil</span>                               <span class="cm">// 8. Consume the event</span></pre>
-      </div>
-    </div>
-  </div>
-</section>
+  &rarr; <span class="kw">filter</span>  isContinuous &amp;&amp; phase != <span class="nr">0</span>      <span class="cm">// 2. Reject mouse wheel events</span>
+  &rarr; <span class="kw">TitleBarDetector</span>.<span class="fn">hitTest</span>(mouseLocation) <span class="cm">// 3. AXUIElement under cursor?</span>
+  &rarr; <span class="kw">GestureStateMachine</span>.<span class="fn">feed</span>(delta, phase)  <span class="cm">// 4. Accumulate, dead zone, lock</span>
+  &rarr; <span class="kw">PreviewOverlay</span>.<span class="fn">show</span>(targetFrame)        <span class="cm">// 5. Translucent preview panel</span>
+  &rarr; <span class="kw">CursorIndicator</span>.<span class="fn">show</span>(direction)         <span class="cm">// 6. Direction badge at cursor</span>
+  &rarr; <span class="kw">WindowManager</span>.<span class="fn">tile</span>(window, position)    <span class="cm">// 7. AXPosition + AXSize</span>
+  &rarr; <span class="kw">return</span> <span class="st">nil</span>                               <span class="cm">// 8. Consume the event</span></pre>
+					</div>
+				</div>
+			</div>
+		</section>
 
-<!-- ═══════════════════════════════════════════
+		<!-- ═══════════════════════════════════════════
      DOWNLOAD / FOOTER
      ═══════════════════════════════════════════ -->
-<section id="download" class="download-section">
-  <div class="fade-in">
-    <div class="section-title">Ready to swipe?</div>
-    <div class="section-sub">Download Swipey and start tiling windows with trackpad gestures.</div>
-  </div>
+		<div class="divider"><hr /></div>
+		<section id="download" class="download-section">
+			<div class="fade-in">
+				<div class="section-title">Ready to swipe?</div>
+				<div class="section-sub">
+					Download Swipey and start tiling windows with trackpad gestures.
+				</div>
+			</div>
 
-  <div class="download-btn-wrap fade-in">
-    <a href="/Swipey-1.0.dmg" class="btn-primary" style="font-size:17px; padding:16px 36px;">
-      <svg width="20" height="20" viewBox="0 0 18 18" fill="none"><path d="M9 2v10m0 0l-3.5-3.5M9 12l3.5-3.5M3 15h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Download Swipey 1.0
-    </a>
-  </div>
+			<div class="download-btn-wrap fade-in">
+				<a
+					href="/Swipey-v1.1.0.dmg"
+					class="btn-primary"
+					style="font-size: 15px; padding: 16px 36px"
+				>
+					<svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+						<path
+							d="M9 2v10m0 0l-3.5-3.5M9 12l3.5-3.5M3 15h12"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+					</svg>
+					Download Swipey 1.1.0
+				</a>
+			</div>
 
-  <div class="badges fade-in">
-    <span class="badge">macOS 14+</span>
-    <span class="badge">Developer ID Signed</span>
-    <span class="badge green">Apple Notarized</span>
-  </div>
-  <div class="requirements fade-in">Universal binary. Requires Accessibility permission. Menu bar agent.</div>
-</section>
+			<div class="badges fade-in">
+				<span class="badge">macOS 14+</span>
+				<span class="badge">Developer ID Signed</span>
+				<span class="badge green">Apple Notarized</span>
+			</div>
+			<div class="requirements fade-in">
+				Universal binary. Requires Accessibility permission. Menu bar agent.
+			</div>
+			<div
+				class="fade-in"
+				style="margin-top: 32px; font-size: 13px; color: var(--gray-500)"
+			>
+				Open source on
+				<a
+					href="https://github.com/MisterMaroki/swipey"
+					target="_blank"
+					rel="noopener"
+					style="color: var(--gray-500)"
+					>GitHub</a
+				>
+				&middot; MIT License
+			</div>
+		</section>
 
-<footer>
-  Made by Omar Maroki · 2025
-</footer>
+		<footer>
+			A
+			<a
+				href="https://1273.co.uk"
+				target="_blank"
+				rel="noopener"
+				style="color: var(--black); font-weight: 500"
+				>1273</a
+			>
+			project &middot; est. 2025 &middot;
+			<a
+				href="https://github.com/MisterMaroki/swipey"
+				target="_blank"
+				rel="noopener"
+				>Source on GitHub</a
+			>
+		</footer>
 
-<!-- ═══════════════════════════════════════════
+		<!-- ═══════════════════════════════════════════
      JAVASCRIPT
      ═══════════════════════════════════════════ -->
-<script>
-(function() {
-  'use strict';
+		<script>
+			(function () {
+				'use strict';
 
-  // ── Scroll fade-in via IntersectionObserver ──
-  const faders = document.querySelectorAll('.fade-in');
-  const fadeObs = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        fadeObs.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.15 });
-  faders.forEach(function(el) { fadeObs.observe(el); });
+				// ── Scroll fade-in via IntersectionObserver ──
+				var faders = document.querySelectorAll('.fade-in');
+				var fadeObs = new IntersectionObserver(
+					function (entries) {
+						entries.forEach(function (entry) {
+							if (entry.isIntersecting) {
+								entry.target.classList.add('visible');
+								fadeObs.unobserve(entry.target);
+							}
+						});
+					},
+					{ threshold: 0.15 },
+				);
+				faders.forEach(function (el) {
+					fadeObs.observe(el);
+				});
 
-  // ── Nav background blur on scroll ──
-  var nav = document.getElementById('nav');
-  window.addEventListener('scroll', function() {
-    if (window.scrollY > 50) {
-      nav.classList.add('scrolled');
-    } else {
-      nav.classList.remove('scrolled');
-    }
-  }, { passive: true });
+				// ── Nav border on scroll ──
+				var nav = document.getElementById('nav');
+				window.addEventListener(
+					'scroll',
+					function () {
+						if (window.scrollY > 50) {
+							nav.classList.add('scrolled');
+						} else {
+							nav.classList.remove('scrolled');
+						}
+					},
+					{ passive: true },
+				);
 
-  // ── Smooth scroll for anchor links ──
-  document.querySelectorAll('a[href^="#"]').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var target = document.querySelector(this.getAttribute('href'));
-      if (target) {
-        e.preventDefault();
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    });
-  });
+				// ── Smooth scroll for anchor links ──
+				document.querySelectorAll('a[href^="#"]').forEach(function (link) {
+					link.addEventListener('click', function (e) {
+						var target = document.querySelector(this.getAttribute('href'));
+						if (target) {
+							e.preventDefault();
+							target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+						}
+					});
+				});
 
-  // ── Dead zone animation trigger ──
-  var dzCard = document.getElementById('deadzone-card');
-  if (dzCard) {
-    var dzTriggered = false;
-    var dzObs = new IntersectionObserver(function(entries) {
-      entries.forEach(function(entry) {
-        if (entry.isIntersecting && !dzTriggered) {
-          dzTriggered = true;
-          var ring = dzCard.querySelector('.dz-ring');
-          var dot = dzCard.querySelector('.dz-dot');
-          var arrow = dzCard.querySelector('.dz-arrow');
-          if (dot) dot.classList.add('animating');
-          // Pulse the ring after dot crosses threshold
-          setTimeout(function() {
-            if (ring) ring.classList.add('active');
-            if (arrow) arrow.classList.add('active');
-          }, 800);
-          dzObs.unobserve(dzCard);
-        }
-      });
-    }, { threshold: 0.5 });
-    dzObs.observe(dzCard);
-  }
-})();
-</script>
-</body>
+				// ── Dead zone animation trigger ──
+				var dzCard = document.getElementById('deadzone-card');
+				if (dzCard) {
+					var dzTriggered = false;
+					var dzObs = new IntersectionObserver(
+						function (entries) {
+							entries.forEach(function (entry) {
+								if (entry.isIntersecting && !dzTriggered) {
+									dzTriggered = true;
+									var ring = dzCard.querySelector('.dz-ring');
+									var dot = dzCard.querySelector('.dz-dot');
+									var arrow = dzCard.querySelector('.dz-arrow');
+									if (dot) dot.classList.add('animating');
+									setTimeout(function () {
+										if (ring) ring.classList.add('active');
+										if (arrow) arrow.classList.add('active');
+									}, 800);
+									dzObs.unobserve(dzCard);
+								}
+							});
+						},
+						{ threshold: 0.5 },
+					);
+					dzObs.observe(dzCard);
+				}
+			})();
+		</script>
+	</body>
 </html>

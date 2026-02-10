@@ -62,7 +62,7 @@ final class StatusBarController {
     @objc private func showAbout() {
         let alert = NSAlert()
         alert.messageText = "Swipey"
-        alert.informativeText = "Version 1.0\n\nTwo-finger swipe window tiling for macOS."
+        alert.informativeText = "Version 1.1.0\n\nTwo-finger swipe window tiling for macOS.\nA 1273 project — 1273.co.uk\n\nMIT License"
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.runModal()

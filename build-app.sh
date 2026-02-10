@@ -3,14 +3,46 @@ set -euo pipefail
 
 APP_NAME="Swipey"
 BUNDLE_ID="com.swipey.app"
-VERSION="1.0"
+VERSION_FILE=".version"
 BUILD_DIR=".build/release"
+
+# --- Semver ---
+if [ -f "$VERSION_FILE" ]; then
+    CURRENT_VERSION=$(cat "$VERSION_FILE")
+else
+    CURRENT_VERSION="0.0.0"
+fi
+
+echo "Current version: ${CURRENT_VERSION}"
+echo ""
+echo "Bump version:"
+echo "  1) patch  (bug fixes)"
+echo "  2) minor  (new features)"
+echo "  3) major  (breaking changes)"
+echo "  4) keep   (stay at ${CURRENT_VERSION})"
+echo ""
+read -rp "Choice [1-4]: " BUMP_CHOICE
+
+IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+
+case "$BUMP_CHOICE" in
+    1) PATCH=$((PATCH + 1)) ;;
+    2) MINOR=$((MINOR + 1)); PATCH=0 ;;
+    3) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+    4) ;;
+    *) echo "Invalid choice"; exit 1 ;;
+esac
+
+VERSION="${MAJOR}.${MINOR}.${PATCH}"
+echo "$VERSION" > "$VERSION_FILE"
+echo ""
+echo "Building version: ${VERSION}"
 APP_BUNDLE="${APP_NAME}.app"
 CONTENTS="${APP_BUNDLE}/Contents"
 MACOS="${CONTENTS}/MacOS"
 RESOURCES="${CONTENTS}/Resources"
 ENTITLEMENTS="Swipey.entitlements"
-DMG_NAME="${APP_NAME}-${VERSION}.dmg"
+DMG_NAME="${APP_NAME}-v${VERSION}.dmg"
 ICON_SOURCE="AppIcon.icns"
 
 # --- Detect signing identity ---
@@ -100,7 +132,7 @@ codesign --force --sign "$SIGN_IDENTITY" \
     "${APP_BUNDLE}"
 
 echo "Verifying signature..."
-codesign -dvvv "${APP_BUNDLE}" 2>&1 | head -15
+codesign -dvvv "${APP_BUNDLE}" 2>&1 | head -15 || true
 
 # --- Create DMG ---
 echo ""
@@ -148,6 +180,19 @@ else
     echo ""
     echo "⚠ Skipping notarization (no Developer ID certificate)."
     echo "  The DMG was created but won't pass Gatekeeper on other machines."
+fi
+
+# --- Move DMG to site/ and update version references ---
+echo ""
+echo "Copying ${DMG_NAME} to site/..."
+mkdir -p site
+# Remove old DMGs before adding the new one
+rm -f site/Swipey-v*.dmg
+mv "${DMG_NAME}" site/
+
+if [ -f "site/index.html" ] && [ "$CURRENT_VERSION" != "$VERSION" ]; then
+    echo "Updating site/index.html: ${CURRENT_VERSION} → ${VERSION}..."
+    sed -i '' "s|${CURRENT_VERSION}|${VERSION}|g" site/index.html
 fi
 
 # --- Reset accessibility for local testing ---

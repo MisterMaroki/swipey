@@ -86,14 +86,14 @@ final class CursorIndicator {
         panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.floatingWindow)) + 2)
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.ignoresMouseEvents = true
-        panel.hasShadow = true
+        panel.hasShadow = false
 
         let effect = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: s, height: s))
         effect.material = .hudWindow
         effect.blendingMode = .behindWindow
         effect.state = .active
         effect.wantsLayer = true
-        effect.layer?.cornerRadius = 10
+        effect.layer?.cornerRadius = 2
         effect.layer?.masksToBounds = true
 
         let inset: CGFloat = 6
@@ -112,7 +112,7 @@ final class CursorIndicator {
         let size = NSSize(width: 24, height: 24)
         return NSImage(size: size, flipped: false) { _ in
             let screen = NSRect(x: 3, y: 5, width: 18, height: 14)
-            let cr: CGFloat = 2.5
+            let cr: CGFloat = 0
             let gap: CGFloat = 1.5
             let halfW = (screen.width - gap) / 2
             let halfH = (screen.height - gap) / 2
@@ -174,7 +174,7 @@ final class CursorIndicator {
         let size = NSSize(width: 24, height: 24)
         return NSImage(size: size, flipped: false) { _ in
             let screen = NSRect(x: 3, y: 5, width: 18, height: 14)
-            let cr: CGFloat = 2.5
+            let cr: CGFloat = 0
 
             // Screen outline only
             let outline = NSBezierPath(roundedRect: screen, xRadius: cr, yRadius: cr)
