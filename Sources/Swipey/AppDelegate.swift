@@ -32,6 +32,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        gestureMonitor.onGestureCancelled = { [weak self] in
+            MainActor.assumeIsolated {
+                self?.onboardingController?.handleGestureCancelled()
+            }
+        }
+
         statusBarController.onShowTutorial = { [weak self] in
             self?.startOnboarding()
         }

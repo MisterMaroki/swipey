@@ -25,12 +25,22 @@ final class OnboardingController: NSObject {
         logger.warning("[Swipey] Onboarding started")
     }
 
+    func handleGestureCancelled() {
+        guard let window, window.isVisible else { return }
+        guard currentStepIndex < steps.count else { return }
+        guard steps[currentStepIndex].acceptsCancellation else { return }
+        advanceStep()
+    }
+
     func handleTileAction(_ position: TilePosition) {
         guard let window, window.isVisible else { return }
         guard currentStepIndex < steps.count else { return }
+        guard steps[currentStepIndex].expectedPositions.contains(position) else { return }
+        advanceStep()
+    }
 
-        let expected = steps[currentStepIndex].expectedPosition
-        guard position == expected else { return }
+    private func advanceStep() {
+        guard let window else { return }
 
         let message = steps[currentStepIndex].completionMessage
         window.showCompletion(message: message, index: currentStepIndex, total: steps.count)
@@ -39,7 +49,6 @@ final class OnboardingController: NSObject {
         currentStepIndex += 1
 
         if currentStepIndex < steps.count {
-            // Show next step after a brief delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                 guard let self, let window = self.window, window.isVisible else { return }
                 window.showStep(
@@ -49,14 +58,12 @@ final class OnboardingController: NSObject {
                 )
             }
         } else {
-            // All steps done — show final screen
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                 guard let self, let window = self.window, window.isVisible else { return }
                 window.showFinal()
                 UserDefaults.standard.set(true, forKey: "onboardingCompleted")
                 logger.warning("[Swipey] Onboarding completed")
 
-                // Auto-close after 3 seconds
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
                     self?.close()
                 }
