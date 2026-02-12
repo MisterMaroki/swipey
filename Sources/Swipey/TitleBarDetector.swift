@@ -7,6 +7,8 @@ enum TitleBarDetector {
     /// Minimum height (in points) of the gesture-eligible strip at the top of a window.
     /// Acts as a fallback for apps without a native title bar (e.g. Electron apps).
     private static let minimumTitleBarHeight: CGFloat = 10
+    /// Standard macOS title bar height (in points).
+    private static let standardTitleBarHeight: CGFloat = 28
 
     static func detectWindow(at point: CGPoint) -> AXUIElement? {
         let systemWide = AXUIElementCreateSystemWide()
@@ -17,7 +19,7 @@ enum TitleBarDetector {
             return nil
         }
 
-        if isTitleBarArea(hitElement) {
+        if isTitleBarArea(hitElement, point: point) {
             return findWindow(from: hitElement)
         }
 
@@ -37,13 +39,16 @@ enum TitleBarDetector {
 
     // MARK: - Private
 
-    private static func isTitleBarArea(_ element: AXUIElement) -> Bool {
+    private static func isTitleBarArea(_ element: AXUIElement, point: CGPoint) -> Bool {
         let role = attribute(of: element, key: kAXRoleAttribute) as? String
         let subrole = attribute(of: element, key: kAXSubroleAttribute) as? String
 
         // If hit test returns the window itself, cursor is on the non-content
-        // area (title bar / window frame)
-        if role == kAXWindowRole as String { return true }
+        // area (title bar / window frame / resize border). Verify the cursor
+        // is actually near the top of the window to exclude resize edges.
+        if role == kAXWindowRole as String {
+            return isInTopStrip(point: point, of: element, height: standardTitleBarHeight)
+        }
         if subrole == "AXTitleBar" { return true }
 
         // Window control buttons
@@ -53,8 +58,13 @@ enum TitleBarDetector {
         ]
         if let subrole, titleBarSubroles.contains(subrole) { return true }
 
-        // Toolbar role
-        if role == "AXToolbar" { return true }
+        // Toolbar role — verify it's near the top of its window
+        if role == "AXToolbar" {
+            if let window = findWindow(from: element) {
+                return isInTopStrip(point: point, of: window, height: standardTitleBarHeight * 2)
+            }
+            return false
+        }
 
         // Walk up ancestors to check if any parent is a title bar or toolbar
         var current = element
@@ -65,8 +75,12 @@ enum TitleBarDetector {
             let parentRole = attribute(of: parent, key: kAXRoleAttribute) as? String
             let parentSubrole = attribute(of: parent, key: kAXSubroleAttribute) as? String
 
-            if parentSubrole == "AXTitleBar" || parentRole == "AXToolbar" {
-                return true
+            if parentSubrole == "AXTitleBar" { return true }
+            if parentRole == "AXToolbar" {
+                if let window = findWindow(from: parent) {
+                    return isInTopStrip(point: point, of: window, height: standardTitleBarHeight * 2)
+                }
+                return false
             }
             // Stop walking if we reach the window — anything not already
             // matched is content area, not title bar
@@ -92,7 +106,7 @@ enum TitleBarDetector {
     }
 
     /// Returns true if `point` (CG/top-left origin) falls within the top strip of the window.
-    private static func isInTopStrip(point: CGPoint, of window: AXUIElement) -> Bool {
+    private static func isInTopStrip(point: CGPoint, of window: AXUIElement, height: CGFloat = minimumTitleBarHeight) -> Bool {
         var posValue: AnyObject?
         var sizeValue: AnyObject?
         guard AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &posValue) == .success,
@@ -106,7 +120,7 @@ enum TitleBarDetector {
             return false
         }
         let distanceFromTop = point.y - origin.y
-        return distanceFromTop >= 0 && distanceFromTop <= minimumTitleBarHeight && point.x >= origin.x && point.x <= origin.x + size.width
+        return distanceFromTop >= 0 && distanceFromTop <= height && point.x >= origin.x && point.x <= origin.x + size.width
     }
 
     private static func attribute(of element: AXUIElement, key: String) -> AnyObject? {

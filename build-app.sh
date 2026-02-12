@@ -134,6 +134,39 @@ codesign --force --sign "$SIGN_IDENTITY" \
 echo "Verifying signature..."
 codesign -dvvv "${APP_BUNDLE}" 2>&1 | head -15 || true
 
+# --- Create custom DMG background ---
+echo ""
+echo "Creating DMG background image..."
+
+DMG_BG_PATH="dmg-background.png"
+USE_BG=false
+
+# Generate background using generate-dmg-bg.py script
+if [ -f "generate-dmg-bg.py" ]; then
+    bash generate-dmg-bg.py
+    if [ -f "$DMG_BG_PATH" ]; then
+        USE_BG=true
+        echo "✓ DMG background ready."
+    else
+        echo "⚠ Failed to generate background (ImageMagick may not be installed)"
+        echo "   Install with: brew install imagemagick"
+        USE_BG=false
+    fi
+else
+    echo "⚠ generate-dmg-bg.py script not found"
+    USE_BG=false
+fi
+
+# Check for create-dmg tool
+if command -v create-dmg &> /dev/null && [ "$USE_BG" = true ]; then
+    echo "📦 create-dmg available — DMG will have custom styling"
+else
+    if [ "$USE_BG" = true ]; then
+        echo "💡 Optional: Install create-dmg for best-looking DMG:"
+        echo "   npm install -g create-dmg"
+    fi
+fi
+
 # --- Create DMG ---
 echo ""
 echo "Creating ${DMG_NAME}..."
@@ -144,10 +177,50 @@ DMG_STAGING=$(mktemp -d)
 cp -R "${APP_BUNDLE}" "${DMG_STAGING}/"
 ln -s /Applications "${DMG_STAGING}/Applications"
 
-hdiutil create -volname "$APP_NAME" \
-    -srcfolder "$DMG_STAGING" \
-    -ov -format UDZO \
-    "$DMG_NAME"
+# Check which create-dmg is available
+# npm create-dmg: simple, auto-layouts nicely
+# brew create-dmg: advanced, supports custom backgrounds
+if command -v create-dmg &> /dev/null; then
+    # Check if it's the npm version (simpler) or brew version (advanced)
+    if create-dmg --help 2>&1 | grep -q "overwrite"; then
+        # npm version - simple usage
+        echo "Using npm create-dmg for auto-styled DMG..."
+        create-dmg "${APP_BUNDLE}" "." --overwrite || {
+            echo "create-dmg failed, falling back to hdiutil..."
+            hdiutil create -volname "$APP_NAME" \
+                -srcfolder "$DMG_STAGING" \
+                -ov -format UDZO \
+                "$DMG_NAME"
+        }
+        # npm create-dmg names it differently, rename if needed
+        if [ -f "${APP_NAME} ${VERSION}.dmg" ]; then
+            mv "${APP_NAME} ${VERSION}.dmg" "$DMG_NAME"
+        fi
+        echo "✓ DMG created with automatic styling"
+    else
+        # brew version - advanced usage with custom background
+        echo "Using brew create-dmg for custom styled DMG..."
+        create-dmg \
+            --volname "$APP_NAME" \
+            --background "$DMG_BG_PATH" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 64 \
+            --icon "${APP_NAME}.app" 150 200 \
+            --hide-extension "${APP_NAME}.app" \
+            --app-drop-link 450 200 \
+            "$DMG_NAME" \
+            "${DMG_STAGING}/"
+        echo "✓ Custom styled DMG created with background"
+    fi
+else
+    echo "Creating DMG with hdiutil..."
+    hdiutil create -volname "$APP_NAME" \
+        -srcfolder "$DMG_STAGING" \
+        -ov -format UDZO \
+        "$DMG_NAME"
+    echo "💡 For prettier DMGs, install: npm install -g create-dmg"
+fi
 
 rm -rf "$DMG_STAGING"
 
