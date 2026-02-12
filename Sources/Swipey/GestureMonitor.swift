@@ -31,10 +31,22 @@ final class GestureMonitor: @unchecked Sendable {
     private let cancelWarningDelay: TimeInterval = 2.0
     private let inactivityTimeout: TimeInterval = 3.0
 
+
+    private var sleepObserver: NSObjectProtocol?
+
     init(windowManager: WindowManager, previewOverlay: PreviewOverlay, cursorIndicator: CursorIndicator) {
         self.windowManager = windowManager
         self.previewOverlay = previewOverlay
         self.cursorIndicator = cursorIndicator
+
+        sleepObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.willSleepNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            logger.warning("[Swipey] System sleeping — resetting gesture state")
+            self?.resetTrackingState()
+        }
     }
 
     /// Try to create the event tap. Call again later if accessibility isn't granted yet.
@@ -49,7 +61,10 @@ final class GestureMonitor: @unchecked Sendable {
             stop()
         }
 
-        let eventMask: CGEventMask = 1 << CGEventType.scrollWheel.rawValue
+        let eventMask: CGEventMask = (1 << CGEventType.scrollWheel.rawValue)
+            | (1 << CGEventType.leftMouseDown.rawValue)
+            | (1 << CGEventType.rightMouseDown.rawValue)
+            | (1 << CGEventType.otherMouseDown.rawValue)
 
         let callback: CGEventTapCallBack = { _, type, event, userInfo in
             guard let userInfo else {
@@ -101,16 +116,26 @@ final class GestureMonitor: @unchecked Sendable {
     // MARK: - Event handling
 
     private func handleEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // Ignore non-scroll events (mouse moved used only for diagnostic)
+        // Any mouse click cancels an active gesture and passes through.
+        if type == .leftMouseDown || type == .rightMouseDown || type == .otherMouseDown {
+            if trackedWindow != nil {
+                resetTrackingState()
+            }
+            return Unmanaged.passUnretained(event)
+        }
+
         guard type == .scrollWheel || type == .tapDisabledByTimeout || type == .tapDisabledByUserInput else {
             return Unmanaged.passUnretained(event)
         }
 
-        // If the tap is disabled by the system, re-enable it
+        // If the tap is disabled by the system, re-enable it and reset
+        // any stale gesture state (e.g. if we missed an ended/cancelled
+        // event during sleep).
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let tap = eventTap {
                 CGEvent.tapEnable(tap: tap, enable: true)
             }
+            resetTrackingState()
             return Unmanaged.passUnretained(event)
         }
 
@@ -152,6 +177,13 @@ final class GestureMonitor: @unchecked Sendable {
     }
 
     private func handleBegan(deltaX: Double, deltaY: Double, event: CGEvent) {
+        // If we still have a tracked window from a previous gesture (missed
+        // ended/cancelled, e.g. after sleep/wake), reset before proceeding.
+        if trackedWindow != nil {
+            logger.warning("[Swipey] Stale gesture detected on new began — resetting")
+            resetTrackingState()
+        }
+
         if CFAbsoluteTimeGetCurrent() < cooldownUntil {
             return
         }
@@ -347,7 +379,24 @@ final class GestureMonitor: @unchecked Sendable {
         }
     }
 
+    /// Reset all gesture tracking state, releasing any consumed-event lock.
+    private func resetTrackingState() {
+        cancelInactivityTimer()
+        DispatchQueue.main.async { [weak self] in
+            self?.previewOverlay.hide()
+            self?.cursorIndicator.hide()
+        }
+        stateMachine.reset()
+        trackedWindow = nil
+        trackedWindowIsFullscreen = false
+        targetScreen = nil
+        lastResolvedPosition = nil
+    }
+
     deinit {
+        if let observer = sleepObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
         stop()
     }
 }

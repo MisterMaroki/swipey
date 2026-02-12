@@ -1,31 +1,48 @@
 #!/bin/bash
-# Generate DMG background from SVG using macOS Quick Look
-# Brutalist minimal style matching Swipey aesthetic
+# Generate DMG background from SVG
+# Output must be exactly 540x380 pixels (1x, not retina)
 
 cd "$(dirname "$0")"
 
 SVG_FILE="dmg-background.svg"
 PNG_FILE="dmg-background.png"
 
-# Create SVG with drag guidance text
-cat > "$SVG_FILE" << 'EOF'
-<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
-  <rect width="600" height="400" fill="#fafafa"/>
-  <text x="300" y="55" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="500" fill="#0a0a0a">Swipey</text>
-  <text x="300" y="150" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#0a0a0a">Drag to Applications</text>
-  <text x="300" y="210" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="44" fill="#a3a3a3">→</text>
+WIDTH=540
+HEIGHT=380
+
+# Create SVG
+cat > "$SVG_FILE" << EOF
+<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
+  <rect width="${WIDTH}" height="${HEIGHT}" fill="#fafafa"/>
+  <text x="270" y="40" text-anchor="middle" font-family="SF Mono, SFMono-Regular, Menlo, monospace" font-size="22" font-weight="600" fill="#0a0a0a">Swipey</text>
+  <text x="270" y="60" text-anchor="middle" font-family="SF Mono, SFMono-Regular, Menlo, monospace" font-size="10" fill="#a3a3a3">a 1273 project</text>
+  <text x="270" y="195" text-anchor="middle" font-family="SF Mono, SFMono-Regular, Menlo, monospace" font-size="28" fill="#d4d4d4">→</text>
+  <text x="270" y="340" text-anchor="middle" font-family="SF Mono, SFMono-Regular, Menlo, monospace" font-size="12" fill="#a3a3a3">Drag to Applications</text>
 </svg>
 EOF
 
-# Convert SVG to PNG using Quick Look
-qlmanage -t -s 600 -o . "$SVG_FILE" 2>/dev/null
+# Convert SVG to PNG (1x - DMG backgrounds don't auto-scale @2x)
+if command -v rsvg-convert &> /dev/null; then
+    rsvg-convert -w $WIDTH -h $HEIGHT "$SVG_FILE" -o "$PNG_FILE"
+elif command -v /Applications/Inkscape.app/Contents/MacOS/inkscape &> /dev/null; then
+    /Applications/Inkscape.app/Contents/MacOS/inkscape "$SVG_FILE" --export-filename="$PNG_FILE" -w $WIDTH -h $HEIGHT
+else
+    # Use qlmanage but with careful sizing
+    # qlmanage -t -s SIZE creates thumbnail fitting in SIZExSIZE square
+    # For 540x380, use -s 540 which will give us 540x380 (since width is larger)
+    qlmanage -t -s $WIDTH -o . "$SVG_FILE" 2>/dev/null
+    
+    if [ -f "${SVG_FILE}.png" ]; then
+        mv "${SVG_FILE}.png" "$PNG_FILE"
+        # Crop to exact dimensions from top-left (keeps header, cuts bottom padding)
+        sips --cropToHeightWidth $HEIGHT $WIDTH --cropOffset 0 0 "$PNG_FILE" >/dev/null 2>&1
+    fi
+fi
 
-# Rename and resize output
-if [ -f "${SVG_FILE}.png" ]; then
-    mv "${SVG_FILE}.png" "$PNG_FILE"
-    # Resize to exact dimensions (qlmanage makes square)
-    sips -z 400 600 "$PNG_FILE" >/dev/null 2>&1
-    echo "✓ DMG background created: $PNG_FILE"
+if [ -f "$PNG_FILE" ]; then
+    # Verify dimensions
+    ACTUAL=$(sips -g pixelWidth -g pixelHeight "$PNG_FILE" 2>/dev/null | grep pixel | awk '{print $2}' | tr '\n' 'x' | sed 's/x$//')
+    echo "✓ DMG background created: $PNG_FILE (${ACTUAL})"
 else
     echo "❌ Failed to create background"
     exit 1

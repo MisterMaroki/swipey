@@ -134,37 +134,12 @@ codesign --force --sign "$SIGN_IDENTITY" \
 echo "Verifying signature..."
 codesign -dvvv "${APP_BUNDLE}" 2>&1 | head -15 || true
 
-# --- Create custom DMG background ---
+# --- Generate DMG background ---
 echo ""
-echo "Creating DMG background image..."
-
 DMG_BG_PATH="dmg-background.png"
-USE_BG=false
-
-# Generate background using generate-dmg-bg.py script
 if [ -f "generate-dmg-bg.py" ]; then
+    echo "Generating DMG background..."
     bash generate-dmg-bg.py
-    if [ -f "$DMG_BG_PATH" ]; then
-        USE_BG=true
-        echo "✓ DMG background ready."
-    else
-        echo "⚠ Failed to generate background (ImageMagick may not be installed)"
-        echo "   Install with: brew install imagemagick"
-        USE_BG=false
-    fi
-else
-    echo "⚠ generate-dmg-bg.py script not found"
-    USE_BG=false
-fi
-
-# Check for create-dmg tool
-if command -v create-dmg &> /dev/null && [ "$USE_BG" = true ]; then
-    echo "📦 create-dmg available — DMG will have custom styling"
-else
-    if [ "$USE_BG" = true ]; then
-        echo "💡 Optional: Install create-dmg for best-looking DMG:"
-        echo "   npm install -g create-dmg"
-    fi
 fi
 
 # --- Create DMG ---
@@ -172,42 +147,22 @@ echo ""
 echo "Creating ${DMG_NAME}..."
 rm -f "${DMG_NAME}"
 
-# Create a temporary directory for DMG contents
-DMG_STAGING=$(mktemp -d)
-cp -R "${APP_BUNDLE}" "${DMG_STAGING}/"
-ln -s /Applications "${DMG_STAGING}/Applications"
-
-# Use Homebrew create-dmg for custom background support
 BREW_CREATE_DMG="/opt/homebrew/bin/create-dmg"
 
-if [ -x "$BREW_CREATE_DMG" ] && [ "$USE_BG" = true ]; then
-    echo "Using Homebrew create-dmg with custom background..."
     "$BREW_CREATE_DMG" \
         --volname "$APP_NAME" \
         --background "$DMG_BG_PATH" \
         --window-pos 200 120 \
-        --window-size 600 400 \
+        --window-size 540 430 \
+        --text-size 12 \
         --icon-size 80 \
-        --icon "${APP_NAME}.app" 150 200 \
+        --icon "${APP_NAME}.app" 160 190 \
         --hide-extension "${APP_NAME}.app" \
-        --app-drop-link 450 200 \
+        --app-drop-link 380 190 \
         "$DMG_NAME" \
-        "${DMG_STAGING}/"
-    echo "✓ Custom styled DMG with background and drag guidance"
-elif command -v create-dmg &> /dev/null; then
-    # Fallback to npm create-dmg (simpler, no custom bg)
-    echo "Using npm create-dmg..."
-    create-dmg "${APP_BUNDLE}" "." --overwrite || {
-        hdiutil create -volname "$APP_NAME" -srcfolder "$DMG_STAGING" -ov -format UDZO "$DMG_NAME"
-    }
-    [ -f "${APP_NAME} ${VERSION}.dmg" ] && mv "${APP_NAME} ${VERSION}.dmg" "$DMG_NAME"
-    echo "✓ DMG created (no custom background)"
-else
-    echo "Creating basic DMG with hdiutil..."
-    hdiutil create -volname "$APP_NAME" -srcfolder "$DMG_STAGING" -ov -format UDZO "$DMG_NAME"
-fi
+        "${APP_BUNDLE}"
+    echo "✓ DMG created with custom background"
 
-rm -rf "$DMG_STAGING"
 
 # Sign the DMG
 echo "Signing ${DMG_NAME}..."
