@@ -5,6 +5,7 @@ final class StatusBarController {
     private let statusItem: NSStatusItem
     private let accessibilityMenuItem: NSMenuItem
     private let accessibilityManager: AccessibilityManager
+    var onShowTutorial: (() -> Void)?
 
     init(accessibilityManager: AccessibilityManager) {
         self.accessibilityManager = accessibilityManager
@@ -38,6 +39,11 @@ final class StatusBarController {
         aboutItem.target = self
         menu.addItem(aboutItem)
 
+        // Tutorial
+        let tutorialItem = NSMenuItem(title: "Show Tutorial", action: #selector(showTutorial), keyEquivalent: "")
+        tutorialItem.target = self
+        menu.addItem(tutorialItem)
+
         menu.addItem(.separator())
 
         // Quit
@@ -67,6 +73,10 @@ final class StatusBarController {
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.runModal()
+    }
+
+    @objc private func showTutorial() {
+        onShowTutorial?()
     }
 
     @objc private func quit() {

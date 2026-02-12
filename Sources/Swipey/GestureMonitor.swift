@@ -20,6 +20,9 @@ final class GestureMonitor: @unchecked Sendable {
     private var trackedWindowIsFullscreen = false
     private var cursorLocation: CGPoint = .zero
 
+    /// Callback fired when a tile action completes.
+    var onTileAction: ((TilePosition) -> Void)?
+
     /// Cooldown: ignore new gestures for a short period after tiling.
     private var cooldownUntil: CFAbsoluteTime = 0
     private let cooldownDuration: CFAbsoluteTime = 0.3
@@ -265,6 +268,7 @@ final class GestureMonitor: @unchecked Sendable {
             let tilePosition = position ?? .restore
             logger.warning("[Swipey] exiting fullscreen → \(String(describing: tilePosition))")
             windowManager.exitFullscreenAndTile(window: window, to: tilePosition, on: screen)
+            DispatchQueue.main.async { [weak self] in self?.onTileAction?(tilePosition) }
             return
         }
 
@@ -276,6 +280,7 @@ final class GestureMonitor: @unchecked Sendable {
 
         logger.warning("[Swipey] tiling to \(String(describing: position))")
         windowManager.tile(window: window, to: position, on: screen)
+        DispatchQueue.main.async { [weak self] in self?.onTileAction?(position) }
     }
 
     private func handleCancelled() {

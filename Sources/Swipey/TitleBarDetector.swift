@@ -4,9 +4,6 @@ import AppKit
 enum TitleBarDetector {
     /// Check if the given screen-space point (CG/top-left origin) is over a window's title bar.
     /// Returns the window AXUIElement if so, nil otherwise.
-    /// Minimum height (in points) of the gesture-eligible strip at the top of a window.
-    /// Acts as a fallback for apps without a native title bar (e.g. Electron apps).
-    private static let minimumTitleBarHeight: CGFloat = 10
     /// Standard macOS title bar height (in points).
     private static let standardTitleBarHeight: CGFloat = 28
 
@@ -23,9 +20,13 @@ enum TitleBarDetector {
             return findWindow(from: hitElement)
         }
 
-        // Fallback: allow the top strip of any window (for apps without a native title bar)
-        if let window = findWindow(from: hitElement), isInTopStrip(point: point, of: window) {
-            return window
+        // Fallback: allow the top strip of any window (for apps without a native title bar).
+        // Fullscreen windows get a taller strip since the title bar is hidden.
+        if let window = findWindow(from: hitElement) {
+            let height = standardTitleBarHeight
+            if isInTopStrip(point: point, of: window, height: height) {
+                return window
+            }
         }
 
         return nil
@@ -106,7 +107,7 @@ enum TitleBarDetector {
     }
 
     /// Returns true if `point` (CG/top-left origin) falls within the top strip of the window.
-    private static func isInTopStrip(point: CGPoint, of window: AXUIElement, height: CGFloat = minimumTitleBarHeight) -> Bool {
+    private static func isInTopStrip(point: CGPoint, of window: AXUIElement, height: CGFloat = standardTitleBarHeight) -> Bool {
         var posValue: AnyObject?
         var sizeValue: AnyObject?
         guard AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &posValue) == .success,
@@ -121,6 +122,13 @@ enum TitleBarDetector {
         }
         let distanceFromTop = point.y - origin.y
         return distanceFromTop >= 0 && distanceFromTop <= height && point.x >= origin.x && point.x <= origin.x + size.width
+    }
+
+    private static func isFullscreen(_ window: AXUIElement) -> Bool {
+        var value: AnyObject?
+        let err = AXUIElementCopyAttributeValue(window, "AXFullScreen" as CFString, &value)
+        if err == .success, let isFS = value as? Bool { return isFS }
+        return false
     }
 
     private static func attribute(of element: AXUIElement, key: String) -> AnyObject? {

@@ -12,6 +12,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var previewOverlay: PreviewOverlay!
     private var cursorIndicator: CursorIndicator!
     private var permissionTimer: Timer?
+    private var onboardingController: OnboardingController?
+    private var onboardingTriggered = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.accessory)
@@ -23,6 +25,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         cursorIndicator = CursorIndicator()
         gestureMonitor = GestureMonitor(windowManager: windowManager, previewOverlay: previewOverlay, cursorIndicator: cursorIndicator)
         gestureMonitor.start()
+
+        gestureMonitor.onTileAction = { [weak self] position in
+            MainActor.assumeIsolated {
+                self?.onboardingController?.handleTileAction(position)
+            }
+        }
+
+        statusBarController.onShowTutorial = { [weak self] in
+            self?.startOnboarding()
+        }
 
         // Periodically re-check accessibility and retry event tap if needed
         permissionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
@@ -36,11 +48,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     logger.warning("[Swipey] Accessibility granted — retrying event tap...")
                     self.gestureMonitor.start()
                 }
+
+                // First-launch onboarding: show once accessibility is granted
+                if self.accessibilityManager.isTrusted && !self.onboardingTriggered {
+                    self.onboardingTriggered = true
+                    if !UserDefaults.standard.bool(forKey: "onboardingCompleted") {
+                        self.startOnboarding()
+                    }
+                }
             }
         }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         permissionTimer?.invalidate()
+    }
+
+    private func startOnboarding() {
+        let controller = OnboardingController()
+        self.onboardingController = controller
+        controller.onComplete = { [weak self] in
+            self?.onboardingController = nil
+        }
+        controller.start()
     }
 }

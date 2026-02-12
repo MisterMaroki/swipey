@@ -121,6 +121,16 @@ final class WindowManager: @unchecked Sendable {
     // MARK: - Animation
 
     private func animateTile(window: AXUIElement, to targetOrigin: CGPoint, size targetSize: CGSize) {
+        // Same-process windows (e.g. onboarding) route AX calls through NSWindow
+        // internals which require the main thread — skip background animation.
+        if isSameProcess(window) {
+            DispatchQueue.main.async { [self] in
+                setPosition(of: window, to: targetOrigin)
+                setSize(of: window, to: targetSize)
+            }
+            return
+        }
+
         let steps = 8
         let intervalMicroseconds: useconds_t = useconds_t(200_000 / UInt32(steps))
 
@@ -132,7 +142,7 @@ final class WindowManager: @unchecked Sendable {
         }
 
         // Run animation on a background thread to avoid sendability issues.
-        // AXUIElement calls are thread-safe.
+        // AXUIElement calls are thread-safe for cross-process windows.
         DispatchQueue.global(qos: .userInteractive).async { [self] in
             for i in 1...steps {
                 let t = Double(i) / Double(steps)
@@ -155,6 +165,11 @@ final class WindowManager: @unchecked Sendable {
             self.setPosition(of: window, to: targetOrigin)
             self.setSize(of: window, to: targetSize)
         }
+    }
+
+    private func isSameProcess(_ window: AXUIElement) -> Bool {
+        var pid: pid_t = 0
+        return AXUIElementGetPid(window, &pid) == .success && pid == getpid()
     }
 
     // MARK: - Screen detection
