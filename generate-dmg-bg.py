@@ -1,51 +1,32 @@
 #!/bin/bash
-# Generate DMG background image using ImageMagick
-# Run from the swipey project root
+# Generate DMG background from SVG using macOS Quick Look
+# Brutalist minimal style matching Swipey aesthetic
 
-OUTPUT="dmg-background.png"
-WIDTH=600
-HEIGHT=400
+cd "$(dirname "$0")"
 
-# Colors (matching Swipey's brutalist minimal aesthetic)
-BG="#fafafa"      # white
-TEXT="#0a0a0a"    # black
-ACCENT="#737373"  # gray-500
-BORDER="#e5e5e5"  # gray-200
+SVG_FILE="dmg-background.svg"
+PNG_FILE="dmg-background.png"
 
-# Check if ImageMagick is installed
-if ! command -v convert &> /dev/null; then
-    echo "❌ ImageMagick not found. Install with: brew install imagemagick"
-    exit 1
-fi
+# Create SVG with drag guidance text
+cat > "$SVG_FILE" << 'EOF'
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+  <rect width="600" height="400" fill="#fafafa"/>
+  <text x="300" y="55" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="500" fill="#0a0a0a">Swipey</text>
+  <text x="300" y="150" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#0a0a0a">Drag to Applications</text>
+  <text x="300" y="210" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="44" fill="#a3a3a3">→</text>
+</svg>
+EOF
 
-# Create the background image
-convert \
-    -size ${WIDTH}x${HEIGHT} \
-    "xc:${BG}" \
-    -fill "${TEXT}" \
-    -font "/System/Library/Fonts/Helvetica.ttc" \
-    -pointsize 36 \
-    -gravity North \
-    -annotate +0+40 "Swipey" \
-    -pointsize 16 \
-    -gravity Center \
-    -annotate +0-80 "Drag Swipey to Applications" \
-    -pointsize 56 \
-    -fill "${ACCENT}" \
-    -gravity Center \
-    -annotate +0-20 "↓" \
-    -pointsize 13 \
-    -gravity Center \
-    -annotate +0+50 "Drop here to install" \
-    -stroke "${BORDER}" \
-    -strokewidth 2 \
-    -fill none \
-    -draw "rectangle 80,320 520,360" \
-    "$OUTPUT"
+# Convert SVG to PNG using Quick Look
+qlmanage -t -s 600 -o . "$SVG_FILE" 2>/dev/null
 
-if [ $? -eq 0 ]; then
-    echo "✓ DMG background created: $OUTPUT"
+# Rename and resize output
+if [ -f "${SVG_FILE}.png" ]; then
+    mv "${SVG_FILE}.png" "$PNG_FILE"
+    # Resize to exact dimensions (qlmanage makes square)
+    sips -z 400 600 "$PNG_FILE" >/dev/null 2>&1
+    echo "✓ DMG background created: $PNG_FILE"
 else
-    echo "❌ Failed to create background image"
+    echo "❌ Failed to create background"
     exit 1
 fi
