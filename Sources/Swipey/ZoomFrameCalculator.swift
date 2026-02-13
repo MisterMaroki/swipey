@@ -27,8 +27,7 @@ public enum ZoomFrameCalculator {
         let origin: CGPoint = anchoredOrigin(
             tileFrame: tileFrame,
             newSize: CGSize(width: newWidth, height: newHeight),
-            position: position,
-            visibleFrame: visibleFrame
+            position: position
         )
 
         var frame = CGRect(origin: origin, size: CGSize(width: newWidth, height: newHeight))
@@ -47,8 +46,7 @@ public enum ZoomFrameCalculator {
     private static func anchoredOrigin(
         tileFrame: CGRect,
         newSize: CGSize,
-        position: TilePosition,
-        visibleFrame: CGRect
+        position: TilePosition
     ) -> CGPoint {
         let dw = newSize.width - tileFrame.width
         let dh = newSize.height - tileFrame.height

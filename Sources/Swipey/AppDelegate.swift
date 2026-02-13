@@ -73,7 +73,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.gestureMonitor.start()
                 }
 
-                if !self.zoomToggleMonitor.isRunning {
+                if self.accessibilityManager.isTrusted && !self.zoomToggleMonitor.isRunning {
                     self.zoomToggleMonitor.start()
                 }
 
