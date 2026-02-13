@@ -266,9 +266,14 @@ final class GestureMonitor: @unchecked Sendable {
             return
         }
 
+        // User released while cancel indicator was showing — treat as cancel
+        if wasCancelShowing {
+            DispatchQueue.main.async { [weak self] in self?.onGestureCancelled?() }
+            return
+        }
+
         // Fullscreen windows: exit fullscreen, then tile to resolved position
         if trackedWindowIsFullscreen {
-            guard !wasCancelShowing else { return }
             cooldownUntil = CFAbsoluteTimeGetCurrent() + cooldownDuration
             let tilePosition = position ?? .restore
             logger.warning("[Swipey] exiting fullscreen → \(String(describing: tilePosition))")
