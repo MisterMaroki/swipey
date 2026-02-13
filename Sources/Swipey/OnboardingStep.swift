@@ -1,4 +1,4 @@
-struct OnboardingStep {
+struct OnboardingStep: Sendable {
     let instruction: String
     let expectedPositions: Set<TilePosition>
     let acceptsCancellation: Bool
