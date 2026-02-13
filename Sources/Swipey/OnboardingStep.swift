@@ -2,7 +2,9 @@ import Foundation
 
 enum StepHint: Sendable {
     case none
-    case swipeRight, swipeDownLeft, swipeUp, swipeUpFast, swipeDown, swipeCancel
+    case titleBarDiagram
+    case indicator(TilePosition)
+    case cancelIndicator
     case doubleTapCmd, holdCmd
 }
 
@@ -46,25 +48,25 @@ struct OnboardingStep: Sendable {
         OnboardingStep(
             instruction: "Two-finger swipe right on the title bar",
             expectedPositions: [.rightHalf],
-            hint: .swipeRight,
+            hint: .titleBarDiagram,
             completionMessage: "Nice! You tiled to the right half."
         ),
         OnboardingStep(
             instruction: "Two-finger swipe to the bottom-left quarter",
             expectedPositions: [.bottomLeftQuarter],
-            hint: .swipeDownLeft,
+            hint: .indicator(.bottomLeftQuarter),
             completionMessage: "Great! You nailed the quarter tile."
         ),
         OnboardingStep(
             instruction: "Two-finger swipe up to maximise",
             expectedPositions: [.maximize],
-            hint: .swipeUp,
+            hint: .indicator(.maximize),
             completionMessage: "Maximised! Now try going faster for fullscreen."
         ),
         OnboardingStep(
             instruction: "Two-finger swipe up faster this time for fullscreen",
             expectedPositions: [.fullscreen],
-            hint: .swipeUpFast,
+            hint: .indicator(.fullscreen),
             completionMessage: "Fullscreen! Looking good."
         ),
         OnboardingStep(
@@ -74,23 +76,29 @@ struct OnboardingStep: Sendable {
                 .maximize, .topLeftQuarter, .topRightQuarter,
                 .bottomLeftQuarter, .bottomRightQuarter,
             ],
-            hint: .swipeDown,
+            hint: .indicator(.restore),
             completionMessage: "You're a natural!"
         ),
         OnboardingStep(
             instruction: "Start a swipe, then hold still for 3 seconds to cancel",
             acceptsCancellation: true,
-            hint: .swipeCancel,
+            hint: .cancelIndicator,
             completionMessage: "Cancelled! Now you know how to bail out."
         ),
         OnboardingStep(
-            instruction: "Double-tap ⌘ to expand a tiled window",
-            acceptsZoomActivated: true,
-            hint: .doubleTapCmd,
-            completionMessage: "Zoomed! Double-tap ⌘ again to restore."
+            instruction: "Now let's teach you how to multitask effectively. Tile this window to the bottom-right quarter",
+            expectedPositions: [.bottomRightQuarter],
+            hint: .indicator(.bottomRightQuarter),
+            completionMessage: "Perfect! Now let's expand it."
         ),
         OnboardingStep(
-            instruction: "Double-tap and hold ⌘ to expand, then release to snap back",
+            instruction: "Double-tap \u{2318} to expand a tiled window",
+            acceptsZoomActivated: true,
+            hint: .doubleTapCmd,
+            completionMessage: "Zoomed! Double-tap \u{2318} again to restore."
+        ),
+        OnboardingStep(
+            instruction: "Double-tap and hold \u{2318} to expand, then release to snap back",
             acceptsZoomHoldReleased: true,
             hint: .holdCmd,
             completionMessage: "Perfect! You've mastered zoom."

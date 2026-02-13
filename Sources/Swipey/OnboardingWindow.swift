@@ -9,7 +9,7 @@ final class OnboardingWindow: NSWindow {
     private let progressTrack: NSView
     private var progressWidthConstraint: NSLayoutConstraint?
     private let titleBarHint = TitleBarHintView()
-    private let keyboardHint = KeyboardHintView()
+    private let indicatorHint = IndicatorHintView()
     private var instructionCenteredConstraint: NSLayoutConstraint!
     private var instructionTopConstraint: NSLayoutConstraint!
 
@@ -70,57 +70,53 @@ final class OnboardingWindow: NSWindow {
     // MARK: - Hints
 
     private func showHint(_ hint: StepHint) {
-        titleBarHint.stopAnimating()
-        keyboardHint.stopAnimating()
-        titleBarHint.isHidden = true
-        keyboardHint.isHidden = true
+        hideAllHints()
 
         switch hint {
         case .none:
-            instructionTopConstraint.isActive = false
-            instructionCenteredConstraint.isActive = true
+            break
 
-        case .swipeRight:
-            showSwipeHint(.right)
-        case .swipeDownLeft:
-            showSwipeHint(.downLeft)
-        case .swipeUp:
-            showSwipeHint(.up)
-        case .swipeUpFast:
-            showSwipeHint(.upFast)
-        case .swipeDown:
-            showSwipeHint(.down)
-        case .swipeCancel:
-            showSwipeHint(.cancel)
+        case .titleBarDiagram:
+            instructionCenteredConstraint.isActive = false
+            instructionTopConstraint.isActive = true
+            titleBarHint.isHidden = false
+            titleBarHint.startAnimating()
+
+        case .indicator(let position):
+            instructionCenteredConstraint.isActive = false
+            instructionTopConstraint.isActive = true
+            indicatorHint.isHidden = false
+            indicatorHint.configure(position: position)
+            indicatorHint.startAnimating()
+
+        case .cancelIndicator:
+            instructionCenteredConstraint.isActive = false
+            instructionTopConstraint.isActive = true
+            indicatorHint.isHidden = false
+            indicatorHint.configureCancel()
+            indicatorHint.startAnimating()
 
         case .doubleTapCmd:
-            showKeyboardHint(.doubleTap)
+            instructionCenteredConstraint.isActive = false
+            instructionTopConstraint.isActive = true
+            indicatorHint.isHidden = false
+            indicatorHint.configureKeyboard(mode: .doubleTap)
+            indicatorHint.startAnimating()
+
         case .holdCmd:
-            showKeyboardHint(.hold)
+            instructionCenteredConstraint.isActive = false
+            instructionTopConstraint.isActive = true
+            indicatorHint.isHidden = false
+            indicatorHint.configureKeyboard(mode: .hold)
+            indicatorHint.startAnimating()
         }
-    }
-
-    private func showSwipeHint(_ direction: TitleBarHintView.SwipeDirection) {
-        instructionCenteredConstraint.isActive = false
-        instructionTopConstraint.isActive = true
-        titleBarHint.isHidden = false
-        titleBarHint.configure(direction: direction)
-        titleBarHint.startAnimating()
-    }
-
-    private func showKeyboardHint(_ mode: KeyboardHintView.Mode) {
-        instructionCenteredConstraint.isActive = false
-        instructionTopConstraint.isActive = true
-        keyboardHint.isHidden = false
-        keyboardHint.configure(mode: mode)
-        keyboardHint.startAnimating()
     }
 
     private func hideAllHints() {
         titleBarHint.isHidden = true
         titleBarHint.stopAnimating()
-        keyboardHint.isHidden = true
-        keyboardHint.stopAnimating()
+        indicatorHint.isHidden = true
+        indicatorHint.stopAnimating()
         instructionTopConstraint.isActive = false
         instructionCenteredConstraint.isActive = true
     }
@@ -175,13 +171,13 @@ final class OnboardingWindow: NSWindow {
         titleBarHint.translatesAutoresizingMaskIntoConstraints = false
         titleBarHint.isHidden = true
 
-        keyboardHint.translatesAutoresizingMaskIntoConstraints = false
-        keyboardHint.isHidden = true
+        indicatorHint.translatesAutoresizingMaskIntoConstraints = false
+        indicatorHint.isHidden = true
 
         effectView.addSubview(instructionLabel)
         effectView.addSubview(doneLabel)
         effectView.addSubview(titleBarHint)
-        effectView.addSubview(keyboardHint)
+        effectView.addSubview(indicatorHint)
         effectView.addSubview(stepLabel)
         effectView.addSubview(progressTrack)
         progressTrack.addSubview(progressBar)
@@ -198,10 +194,10 @@ final class OnboardingWindow: NSWindow {
             titleBarHint.widthAnchor.constraint(equalToConstant: 220),
             titleBarHint.heightAnchor.constraint(equalToConstant: 130),
 
-            keyboardHint.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
-            keyboardHint.topAnchor.constraint(equalTo: instructionLabel.bottomAnchor, constant: 12),
-            keyboardHint.widthAnchor.constraint(equalToConstant: 220),
-            keyboardHint.heightAnchor.constraint(equalToConstant: 100),
+            indicatorHint.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
+            indicatorHint.topAnchor.constraint(equalTo: instructionLabel.bottomAnchor, constant: 12),
+            indicatorHint.widthAnchor.constraint(equalToConstant: 220),
+            indicatorHint.heightAnchor.constraint(equalToConstant: 120),
 
             doneLabel.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
             doneLabel.centerYAnchor.constraint(equalTo: effectView.centerYAnchor, constant: -10),

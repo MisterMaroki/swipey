@@ -2,18 +2,12 @@ import AppKit
 import QuartzCore
 
 /// Animated illustration showing a mini window with a highlighted title bar
-/// and a sweeping two-finger arrow in the specified direction.
+/// and a sweeping two-finger arrow to the right, helping users identify the title bar.
 @MainActor
 final class TitleBarHintView: NSView {
 
-    enum SwipeDirection {
-        case right, downLeft, up, upFast, down, cancel
-    }
-
     private let arrowLayer = CALayer()
     private let glowLayer = CAGradientLayer()
-    private let cancelXLayer = CALayer()
-    private var currentDirection: SwipeDirection = .right
 
     // Mini window geometry (shared between draw and animation)
     private let windowRect = CGRect(x: 20, y: 10, width: 180, height: 110)
@@ -37,40 +31,13 @@ final class TitleBarHintView: NSView {
 
     // MARK: - Public
 
-    func configure(direction: SwipeDirection) {
-        currentDirection = direction
-        updateArrowImage()
-        cancelXLayer.isHidden = (direction != .cancel)
-    }
-
     func startAnimating() {
         layoutArrowAndGlow()
         arrowLayer.removeAllAnimations()
         glowLayer.removeAllAnimations()
-        cancelXLayer.removeAllAnimations()
 
         let titleBarCenterY = windowRect.maxY - titleBarHeight / 2
-        let centerX = windowRect.midX
-
-        switch currentDirection {
-        case .right:
-            animateSweep(xFrom: 30, xTo: 185, yFrom: titleBarCenterY, yTo: titleBarCenterY, duration: 1.6)
-
-        case .downLeft:
-            animateSweep(xFrom: 170, xTo: 30, yFrom: titleBarCenterY, yTo: windowRect.minY + 20, duration: 1.6)
-
-        case .up:
-            animateSweep(xFrom: centerX, xTo: centerX, yFrom: titleBarCenterY - 10, yTo: windowRect.maxY + 10, duration: 1.4)
-
-        case .upFast:
-            animateSweep(xFrom: centerX, xTo: centerX, yFrom: titleBarCenterY - 10, yTo: windowRect.maxY + 10, duration: 0.8)
-
-        case .down:
-            animateSweep(xFrom: centerX, xTo: centerX, yFrom: titleBarCenterY, yTo: windowRect.minY + 10, duration: 1.4)
-
-        case .cancel:
-            animateCancel(titleBarCenterY: titleBarCenterY)
-        }
+        animateSweep(yCenter: titleBarCenterY)
 
         // Title bar glow pulse
         let glow = CABasicAnimation(keyPath: "opacity")
@@ -86,7 +53,6 @@ final class TitleBarHintView: NSView {
     func stopAnimating() {
         arrowLayer.removeAllAnimations()
         glowLayer.removeAllAnimations()
-        cancelXLayer.removeAllAnimations()
     }
 
     // MARK: - Drawing
@@ -183,12 +149,7 @@ final class TitleBarHintView: NSView {
         arrowLayer.opacity = 0
         layer?.addSublayer(arrowLayer)
 
-        cancelXLayer.isHidden = true
-        cancelXLayer.opacity = 0
-        layer?.addSublayer(cancelXLayer)
-
-        updateArrowImage()
-        drawCancelXImage()
+        drawArrowImage()
     }
 
     private func layoutArrowAndGlow() {
@@ -199,83 +160,37 @@ final class TitleBarHintView: NSView {
         let titleBarCenterY = windowRect.maxY - titleBarHeight / 2
         arrowLayer.frame = CGRect(x: 30, y: titleBarCenterY - arrowSize / 2,
                                   width: arrowSize, height: arrowSize)
-
-        cancelXLayer.frame = CGRect(x: windowRect.midX - 12, y: titleBarCenterY - 12,
-                                    width: 24, height: 24)
     }
 
-    private func animateSweep(xFrom: CGFloat, xTo: CGFloat, yFrom: CGFloat, yTo: CGFloat, duration: CFTimeInterval) {
+    private func animateSweep(yCenter: CGFloat) {
         let halfArrow = arrowSize / 2
+        let xFrom: CGFloat = 30
+        let xTo: CGFloat = 185
 
-        // Position animation
+        arrowLayer.frame = CGRect(x: xFrom - halfArrow, y: yCenter - halfArrow,
+                                  width: arrowSize, height: arrowSize)
+
         let posAnim = CAKeyframeAnimation(keyPath: "position")
         posAnim.values = [
-            NSValue(point: NSPoint(x: xFrom, y: yFrom)),
-            NSValue(point: NSPoint(x: xTo, y: yTo)),
+            NSValue(point: NSPoint(x: xFrom, y: yCenter)),
+            NSValue(point: NSPoint(x: xTo, y: yCenter)),
         ]
         posAnim.keyTimes = [0.0, 1.0]
-        posAnim.duration = duration
+        posAnim.duration = 1.6
         posAnim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
         posAnim.repeatCount = .infinity
         posAnim.isRemovedOnCompletion = false
-
-        // Set the initial position so the layer is positioned correctly
-        arrowLayer.frame = CGRect(x: xFrom - halfArrow, y: yFrom - halfArrow,
-                                  width: arrowSize, height: arrowSize)
         arrowLayer.add(posAnim, forKey: "sweep")
 
-        // Fade
         let fade = CAKeyframeAnimation(keyPath: "opacity")
         fade.values = [0.0, 1.0, 1.0, 0.0]
         fade.keyTimes = [0.0, 0.12, 0.75, 1.0]
-        fade.duration = duration
+        fade.duration = 1.6
         fade.repeatCount = .infinity
         arrowLayer.add(fade, forKey: "fade")
     }
 
-    private func animateCancel(titleBarCenterY: CGFloat) {
-        let halfArrow = arrowSize / 2
-        let startX: CGFloat = 50
-        let stopX: CGFloat = windowRect.midX
-
-        // Arrow sweeps partway then stops
-        arrowLayer.frame = CGRect(x: startX - halfArrow, y: titleBarCenterY - halfArrow,
-                                  width: arrowSize, height: arrowSize)
-
-        let sweepPos = CAKeyframeAnimation(keyPath: "position.x")
-        sweepPos.values = [startX, stopX, stopX, stopX, startX]
-        sweepPos.keyTimes = [0.0, 0.25, 0.5, 0.85, 1.0]
-        sweepPos.duration = 3.0
-        sweepPos.repeatCount = .infinity
-        arrowLayer.add(sweepPos, forKey: "sweep")
-
-        let arrowFade = CAKeyframeAnimation(keyPath: "opacity")
-        arrowFade.values = [0.0, 1.0, 0.6, 0.3, 0.0]
-        arrowFade.keyTimes = [0.0, 0.15, 0.3, 0.8, 1.0]
-        arrowFade.duration = 3.0
-        arrowFade.repeatCount = .infinity
-        arrowLayer.add(arrowFade, forKey: "fade")
-
-        // Cancel X fades in after arrow stops, then fades out
-        cancelXLayer.frame = CGRect(x: stopX - 12, y: titleBarCenterY - 12, width: 24, height: 24)
-        let xFade = CAKeyframeAnimation(keyPath: "opacity")
-        xFade.values = [0.0, 0.0, 1.0, 1.0, 0.0]
-        xFade.keyTimes = [0.0, 0.3, 0.4, 0.8, 1.0]
-        xFade.duration = 3.0
-        xFade.repeatCount = .infinity
-        cancelXLayer.add(xFade, forKey: "fade")
-    }
-
-    private func updateArrowImage() {
-        let rotation: CGFloat
-        switch currentDirection {
-        case .right, .cancel:  rotation = 0
-        case .downLeft:        rotation = .pi * 0.75   // 135° CW (points down-left)
-        case .up:              rotation = -.pi / 2     // points up
-        case .upFast:          rotation = -.pi / 2
-        case .down:            rotation = .pi / 2      // points down
-        }
-
+    private func drawArrowImage() {
         let size = arrowSize
         let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
             guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
@@ -285,11 +200,6 @@ final class TitleBarHintView: NSView {
             ctx.setLineWidth(2.5)
             ctx.setLineCap(.round)
             ctx.setLineJoin(.round)
-
-            // Rotate around center
-            ctx.translateBy(x: rect.midX, y: rect.midY)
-            ctx.rotate(by: rotation)
-            ctx.translateBy(x: -rect.midX, y: -rect.midY)
 
             let midY = rect.midY
             let fingerSpacing: CGFloat = 5
@@ -319,30 +229,5 @@ final class TitleBarHintView: NSView {
 
         arrowLayer.contents = image
         arrowLayer.contentsGravity = .resizeAspect
-    }
-
-    private func drawCancelXImage() {
-        let size: CGFloat = 24
-        let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
-            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
-
-            ctx.setStrokeColor(NSColor.systemRed.withAlphaComponent(0.9).cgColor)
-            ctx.setLineWidth(3)
-            ctx.setLineCap(.round)
-
-            let inset: CGFloat = 5
-            ctx.move(to: CGPoint(x: inset, y: inset))
-            ctx.addLine(to: CGPoint(x: rect.width - inset, y: rect.height - inset))
-            ctx.strokePath()
-
-            ctx.move(to: CGPoint(x: rect.width - inset, y: inset))
-            ctx.addLine(to: CGPoint(x: inset, y: rect.height - inset))
-            ctx.strokePath()
-
-            return true
-        }
-
-        cancelXLayer.contents = image
-        cancelXLayer.contentsGravity = .resizeAspect
     }
 }
