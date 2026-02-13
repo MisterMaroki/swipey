@@ -51,7 +51,7 @@ struct OnboardingStep: Sendable {
             completionMessage: "Let's go!"
         ),
         OnboardingStep(
-            instruction: "Two-finger swipe right on the title bar",
+            instruction: "Slowly take two fingers and swipe right on the title bar",
             expectedPositions: [.rightHalf],
             hint: .titleBarDiagram,
             trackpadGesture: .swipeRight,

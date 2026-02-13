@@ -25,8 +25,7 @@ final class ZoomManager: @unchecked Sendable {
 
     /// Toggle zoom on the currently focused window.
     func toggleFocusedWindow() {
-        guard let frontApp = NSWorkspace.shared.frontmostApplication else { return }
-        let appElement = AXUIElementCreateApplication(frontApp.processIdentifier)
+        let appElement = AXUIElementCreateApplication(focusedAppPID())
 
         var focusedValue: AnyObject?
         let err = AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &focusedValue)
@@ -45,8 +44,7 @@ final class ZoomManager: @unchecked Sendable {
 
     /// Collapse the focused window (hold-release mode).
     func collapseFocusedWindow() {
-        guard let frontApp = NSWorkspace.shared.frontmostApplication else { return }
-        let appElement = AXUIElementCreateApplication(frontApp.processIdentifier)
+        let appElement = AXUIElementCreateApplication(focusedAppPID())
 
         var focusedValue: AnyObject?
         let err = AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &focusedValue)
@@ -71,6 +69,15 @@ final class ZoomManager: @unchecked Sendable {
     func isZoomed(_ window: AXUIElement) -> Bool {
         let key = Int(CFHash(window))
         return zoomedWindows[key] != nil
+    }
+
+    /// Accessory apps may not appear as `frontmostApplication`.
+    /// When our own app is active, use our PID directly.
+    private func focusedAppPID() -> pid_t {
+        if NSRunningApplication.current.isActive {
+            return ProcessInfo.processInfo.processIdentifier
+        }
+        return NSWorkspace.shared.frontmostApplication?.processIdentifier ?? ProcessInfo.processInfo.processIdentifier
     }
 
     // MARK: - Private
@@ -113,7 +120,7 @@ final class ZoomManager: @unchecked Sendable {
 
         let candidates: [TilePosition] = [
             .topLeftQuarter, .topRightQuarter, .bottomLeftQuarter, .bottomRightQuarter,
-            .leftHalf, .rightHalf, .topHalf, .bottomHalf, .maximize
+            .leftHalf, .rightHalf, .topHalf, .bottomHalf,
         ]
 
         for position in candidates {

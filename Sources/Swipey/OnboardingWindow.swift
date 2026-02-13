@@ -69,7 +69,7 @@ final class OnboardingWindow: NSWindow {
     }
 
     func showFinal() {
-        instructionLabel.stringValue = "You are now ready to get swipey."
+        instructionLabel.stringValue = "You are now a screen real estate tycoon!"
         instructionLabel.isHidden = false
         doneLabel.isHidden = true
         stepLabel.isHidden = true
@@ -238,7 +238,7 @@ final class OnboardingWindow: NSWindow {
         welcomeTitle.alignment = .center
         welcomeTitle.translatesAutoresizingMaskIntoConstraints = false
 
-        welcomeSubtitle.stringValue = "Let's become window tiling wizards together.\nScreen real estate tycoons!"
+        welcomeSubtitle.stringValue = "Let's become window tiling wizards together.\n"
         welcomeSubtitle.font = .systemFont(ofSize: 15, weight: .regular)
         welcomeSubtitle.textColor = .secondaryLabelColor
         welcomeSubtitle.alignment = .center
