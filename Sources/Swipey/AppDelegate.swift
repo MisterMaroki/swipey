@@ -4,7 +4,9 @@ import os
 private let logger = Logger(subsystem: "com.swipey.app", category: "app")
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+public final class AppDelegate: NSObject, NSApplicationDelegate {
+    public override init() { super.init() }
+
     private var accessibilityManager: AccessibilityManager!
     private var statusBarController: StatusBarController!
     private var windowManager: WindowManager!
@@ -15,7 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var onboardingController: OnboardingController?
     private var onboardingTriggered = false
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
+    public func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.accessory)
 
         accessibilityManager = AccessibilityManager()
@@ -66,7 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
+    public func applicationWillTerminate(_ notification: Notification) {
         permissionTimer?.invalidate()
     }
 
