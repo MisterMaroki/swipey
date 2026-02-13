@@ -8,7 +8,9 @@ final class OnboardingWindow: NSWindow {
     private let progressBar: NSView
     private let progressTrack: NSView
     private var progressWidthConstraint: NSLayoutConstraint?
-    private let swipeHintView = SwipeHintView(frame: .zero)
+    private let titleBarHint = TitleBarHintView()
+    private var instructionCenteredConstraint: NSLayoutConstraint!
+    private var instructionTopConstraint: NSLayoutConstraint!
 
     init() {
         instructionLabel = NSTextField(labelWithString: "")
@@ -35,7 +37,7 @@ final class OnboardingWindow: NSWindow {
 
     // MARK: - Public
 
-    func showStep(index: Int, total: Int, instruction: String, swipeHint: SwipeHint? = nil) {
+    func showStep(index: Int, total: Int, instruction: String) {
         instructionLabel.stringValue = instruction
         doneLabel.isHidden = true
         instructionLabel.isHidden = false
@@ -44,12 +46,17 @@ final class OnboardingWindow: NSWindow {
         progressTrack.isHidden = false
         updateProgress(fraction: CGFloat(index) / CGFloat(total))
 
-        if let hint = swipeHint {
-            swipeHintView.isHidden = false
-            swipeHintView.show(direction: hint)
+        // Show title bar hint only on the first interactive step (index 1, after welcome)
+        let showHint = (index == 1)
+        titleBarHint.isHidden = !showHint
+        if showHint {
+            titleBarHint.startAnimating()
+            instructionCenteredConstraint.isActive = false
+            instructionTopConstraint.isActive = true
         } else {
-            swipeHintView.hide()
-            swipeHintView.isHidden = true
+            titleBarHint.stopAnimating()
+            instructionTopConstraint.isActive = false
+            instructionCenteredConstraint.isActive = true
         }
     }
 
@@ -57,8 +64,8 @@ final class OnboardingWindow: NSWindow {
         doneLabel.stringValue = message
         doneLabel.isHidden = false
         instructionLabel.isHidden = true
-        swipeHintView.hide()
-        swipeHintView.isHidden = true
+        titleBarHint.isHidden = true
+        titleBarHint.stopAnimating()
         updateProgress(fraction: CGFloat(index + 1) / CGFloat(total))
     }
 
@@ -67,8 +74,6 @@ final class OnboardingWindow: NSWindow {
         instructionLabel.isHidden = false
         doneLabel.isHidden = true
         stepLabel.isHidden = true
-        swipeHintView.hide()
-        swipeHintView.isHidden = true
         updateProgress(fraction: 1.0)
     }
 
@@ -119,12 +124,12 @@ final class OnboardingWindow: NSWindow {
         progressBar.layer?.cornerRadius = 2
         progressBar.translatesAutoresizingMaskIntoConstraints = false
 
-        swipeHintView.translatesAutoresizingMaskIntoConstraints = false
-        swipeHintView.isHidden = true
+        titleBarHint.translatesAutoresizingMaskIntoConstraints = false
+        titleBarHint.isHidden = true
 
         effectView.addSubview(instructionLabel)
         effectView.addSubview(doneLabel)
-        effectView.addSubview(swipeHintView)
+        effectView.addSubview(titleBarHint)
         effectView.addSubview(stepLabel)
         effectView.addSubview(progressTrack)
         progressTrack.addSubview(progressBar)
@@ -134,13 +139,12 @@ final class OnboardingWindow: NSWindow {
 
         NSLayoutConstraint.activate([
             instructionLabel.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
-            instructionLabel.centerYAnchor.constraint(equalTo: effectView.centerYAnchor, constant: -30),
             instructionLabel.widthAnchor.constraint(lessThanOrEqualTo: effectView.widthAnchor, constant: -60),
 
-            swipeHintView.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
-            swipeHintView.topAnchor.constraint(equalTo: instructionLabel.bottomAnchor, constant: 12),
-            swipeHintView.widthAnchor.constraint(equalToConstant: 120),
-            swipeHintView.heightAnchor.constraint(equalToConstant: 50),
+            titleBarHint.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
+            titleBarHint.topAnchor.constraint(equalTo: instructionLabel.bottomAnchor, constant: 12),
+            titleBarHint.widthAnchor.constraint(equalToConstant: 220),
+            titleBarHint.heightAnchor.constraint(equalToConstant: 130),
 
             doneLabel.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
             doneLabel.centerYAnchor.constraint(equalTo: effectView.centerYAnchor, constant: -10),
@@ -159,5 +163,12 @@ final class OnboardingWindow: NSWindow {
             progressBar.bottomAnchor.constraint(equalTo: progressTrack.bottomAnchor),
             progressWidth,
         ])
+
+        // Switchable vertical position for instruction label
+        instructionCenteredConstraint = instructionLabel.centerYAnchor.constraint(
+            equalTo: effectView.centerYAnchor, constant: -10)
+        instructionTopConstraint = instructionLabel.topAnchor.constraint(
+            equalTo: effectView.topAnchor, constant: 40)
+        instructionCenteredConstraint.isActive = true
     }
 }
