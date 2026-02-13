@@ -10,6 +10,9 @@ final class OnboardingController: NSObject {
     private let steps = OnboardingStep.steps
     var onComplete: (() -> Void)?
 
+    private func playSuccess() { NSSound(named: "Glass")?.play() }
+    private func playNotQuite() { NSSound(named: "Funk")?.play() }
+
     func start() {
         currentStepIndex = 0
 
@@ -35,26 +38,39 @@ final class OnboardingController: NSObject {
     func handleTileAction(_ position: TilePosition) {
         guard let window, window.isVisible else { return }
         guard currentStepIndex < steps.count else { return }
-        guard steps[currentStepIndex].expectedPositions.contains(position) else { return }
-        advanceStep()
+        let step = steps[currentStepIndex]
+        if step.expectedPositions.contains(position) {
+            advanceStep()
+        } else if !step.expectedPositions.isEmpty {
+            playNotQuite()
+        }
     }
 
     func handleZoomActivated() {
         guard let window, window.isVisible else { return }
         guard currentStepIndex < steps.count else { return }
-        guard steps[currentStepIndex].acceptsZoomActivated else { return }
-        advanceStep()
+        let step = steps[currentStepIndex]
+        if step.acceptsZoomActivated {
+            advanceStep()
+        } else if step.acceptsZoomHoldReleased {
+            playNotQuite()
+        }
     }
 
     func handleZoomHoldReleased() {
         guard let window, window.isVisible else { return }
         guard currentStepIndex < steps.count else { return }
-        guard steps[currentStepIndex].acceptsZoomHoldReleased else { return }
-        advanceStep()
+        let step = steps[currentStepIndex]
+        if step.acceptsZoomHoldReleased {
+            advanceStep()
+        } else if step.acceptsZoomActivated {
+            playNotQuite()
+        }
     }
 
     private func advanceStep() {
         guard let window else { return }
+        playSuccess()
 
         let message = steps[currentStepIndex].completionMessage
         window.showCompletion(message: message, index: currentStepIndex, total: steps.count)
