@@ -58,6 +58,13 @@ struct OnboardingStep: Sendable {
             completionMessage: "Nice! You tiled to the right half."
         ),
         OnboardingStep(
+            instruction: "Start a swipe, then hold still to cancel",
+            acceptsCancellation: true,
+            hint: .cancelIndicator,
+            trackpadGesture: .swipeAndHold,
+            completionMessage: "Cancelled! Now you know how to bail out."
+        ),
+        OnboardingStep(
             instruction: "Two-finger swipe to the bottom-left quarter",
             expectedPositions: [.bottomLeftQuarter],
             hint: .indicator(.bottomLeftQuarter),
@@ -88,13 +95,6 @@ struct OnboardingStep: Sendable {
             hint: .indicator(.restore),
             trackpadGesture: .swipeDown,
             completionMessage: "You're a natural!"
-        ),
-        OnboardingStep(
-            instruction: "Start a swipe, then hold still to cancel",
-            acceptsCancellation: true,
-            hint: .cancelIndicator,
-            trackpadGesture: .swipeAndHold,
-            completionMessage: "Cancelled! Now you know how to bail out."
         ),
         OnboardingStep(
             instruction: "Tile this window to the bottom-right quarter",
