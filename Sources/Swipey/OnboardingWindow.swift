@@ -10,6 +10,10 @@ final class OnboardingWindow: NSWindow {
     private var progressWidthConstraint: NSLayoutConstraint?
     private let titleBarHint = TitleBarHintView()
     private let indicatorHint = IndicatorHintView()
+    private let welcomeContainer = NSView()
+    private let welcomeIcon = NSImageView()
+    private let welcomeTitle = NSTextField(labelWithString: "")
+    private let welcomeSubtitle = NSTextField(labelWithString: "")
     private var instructionCenteredConstraint: NSLayoutConstraint!
     private var instructionTopConstraint: NSLayoutConstraint!
 
@@ -76,6 +80,18 @@ final class OnboardingWindow: NSWindow {
         case .none:
             break
 
+        case .welcome:
+            instructionLabel.isHidden = true
+            stepLabel.isHidden = true
+            progressTrack.isHidden = true
+            welcomeContainer.isHidden = false
+            welcomeContainer.alphaValue = 0
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.6
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                welcomeContainer.animator().alphaValue = 1
+            }
+
         case .titleBarDiagram:
             instructionCenteredConstraint.isActive = false
             instructionTopConstraint.isActive = true
@@ -117,6 +133,7 @@ final class OnboardingWindow: NSWindow {
         titleBarHint.stopAnimating()
         indicatorHint.isHidden = true
         indicatorHint.stopAnimating()
+        welcomeContainer.isHidden = true
         instructionTopConstraint.isActive = false
         instructionCenteredConstraint.isActive = true
     }
@@ -174,10 +191,39 @@ final class OnboardingWindow: NSWindow {
         indicatorHint.translatesAutoresizingMaskIntoConstraints = false
         indicatorHint.isHidden = true
 
+        // Welcome layout
+        welcomeContainer.translatesAutoresizingMaskIntoConstraints = false
+        welcomeContainer.isHidden = true
+
+        if let appIcon = NSImage(named: NSImage.applicationIconName) {
+            welcomeIcon.image = appIcon
+        }
+        welcomeIcon.imageScaling = .scaleProportionallyUpOrDown
+        welcomeIcon.translatesAutoresizingMaskIntoConstraints = false
+
+        welcomeTitle.stringValue = "Welcome to Swipey"
+        welcomeTitle.font = .systemFont(ofSize: 28, weight: .bold)
+        welcomeTitle.textColor = .labelColor
+        welcomeTitle.alignment = .center
+        welcomeTitle.translatesAutoresizingMaskIntoConstraints = false
+
+        welcomeSubtitle.stringValue = "Let's become window tiling wizards together.\nScreen real estate tycoons!"
+        welcomeSubtitle.font = .systemFont(ofSize: 15, weight: .regular)
+        welcomeSubtitle.textColor = .secondaryLabelColor
+        welcomeSubtitle.alignment = .center
+        welcomeSubtitle.lineBreakMode = .byWordWrapping
+        welcomeSubtitle.maximumNumberOfLines = 0
+        welcomeSubtitle.translatesAutoresizingMaskIntoConstraints = false
+
+        welcomeContainer.addSubview(welcomeIcon)
+        welcomeContainer.addSubview(welcomeTitle)
+        welcomeContainer.addSubview(welcomeSubtitle)
+
         effectView.addSubview(instructionLabel)
         effectView.addSubview(doneLabel)
         effectView.addSubview(titleBarHint)
         effectView.addSubview(indicatorHint)
+        effectView.addSubview(welcomeContainer)
         effectView.addSubview(stepLabel)
         effectView.addSubview(progressTrack)
         progressTrack.addSubview(progressBar)
@@ -198,6 +244,25 @@ final class OnboardingWindow: NSWindow {
             indicatorHint.topAnchor.constraint(equalTo: instructionLabel.bottomAnchor, constant: 12),
             indicatorHint.widthAnchor.constraint(equalToConstant: 220),
             indicatorHint.heightAnchor.constraint(equalToConstant: 120),
+
+            // Welcome container centered in window
+            welcomeContainer.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
+            welcomeContainer.centerYAnchor.constraint(equalTo: effectView.centerYAnchor, constant: -10),
+            welcomeContainer.widthAnchor.constraint(lessThanOrEqualTo: effectView.widthAnchor, constant: -60),
+
+            welcomeIcon.centerXAnchor.constraint(equalTo: welcomeContainer.centerXAnchor),
+            welcomeIcon.topAnchor.constraint(equalTo: welcomeContainer.topAnchor),
+            welcomeIcon.widthAnchor.constraint(equalToConstant: 64),
+            welcomeIcon.heightAnchor.constraint(equalToConstant: 64),
+
+            welcomeTitle.centerXAnchor.constraint(equalTo: welcomeContainer.centerXAnchor),
+            welcomeTitle.topAnchor.constraint(equalTo: welcomeIcon.bottomAnchor, constant: 14),
+            welcomeTitle.widthAnchor.constraint(lessThanOrEqualTo: welcomeContainer.widthAnchor),
+
+            welcomeSubtitle.centerXAnchor.constraint(equalTo: welcomeContainer.centerXAnchor),
+            welcomeSubtitle.topAnchor.constraint(equalTo: welcomeTitle.bottomAnchor, constant: 8),
+            welcomeSubtitle.widthAnchor.constraint(lessThanOrEqualTo: welcomeContainer.widthAnchor),
+            welcomeSubtitle.bottomAnchor.constraint(equalTo: welcomeContainer.bottomAnchor),
 
             doneLabel.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
             doneLabel.centerYAnchor.constraint(equalTo: effectView.centerYAnchor, constant: -10),

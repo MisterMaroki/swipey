@@ -2,6 +2,7 @@ import Foundation
 
 enum StepHint: Sendable {
     case none
+    case welcome
     case titleBarDiagram
     case indicator(TilePosition)
     case cancelIndicator
@@ -41,7 +42,8 @@ struct OnboardingStep: Sendable {
 
     static let steps: [OnboardingStep] = [
         OnboardingStep(
-            instruction: "Welcome to Swipey! Let's become window tiling wizards together. Screen real estate tycoons!",
+            instruction: "",
+            hint: .welcome,
             autoAdvanceDelay: 3.0,
             completionMessage: "Let's go!"
         ),
