@@ -82,6 +82,93 @@ struct GridSnapshot: Sendable {
         return windows.first(where: { $0.id == windowId })
     }
 
+    // MARK: - Propagation
+
+    struct FrameAdjustment: Sendable {
+        let windowId: Int
+        let newFrame: CGRect
+    }
+
+    /// Given a window whose frame changed, compute the adjustments needed for adjacent windows.
+    func computePropagation(
+        changedWindowId: Int,
+        oldFrame: CGRect,
+        newFrame: CGRect
+    ) -> [FrameAdjustment] {
+        // Don't propagate changes from windows we adjusted ourselves
+        if isAdjusting(windowId: changedWindowId) { return [] }
+
+        var adjustments: [FrameAdjustment] = []
+
+        // Check each edge for movement
+        let leftDelta = newFrame.minX - oldFrame.minX
+        let rightDelta = newFrame.maxX - oldFrame.maxX
+        let topDelta = newFrame.minY - oldFrame.minY
+        let bottomDelta = newFrame.maxY - oldFrame.maxY
+
+        // Right edge moved → affects vertical shared edges where this window is A
+        if abs(rightDelta) > 0.5 {
+            for edge in sharedEdges where edge.axis == .vertical && edge.windowAId == changedWindowId {
+                if let neighbor = entry(forWindow: edge.windowBId) {
+                    let adjusted = CGRect(
+                        x: neighbor.frame.origin.x + rightDelta,
+                        y: neighbor.frame.origin.y,
+                        width: neighbor.frame.width - rightDelta,
+                        height: neighbor.frame.height
+                    )
+                    adjustments.append(FrameAdjustment(windowId: edge.windowBId, newFrame: adjusted))
+                }
+            }
+        }
+
+        // Left edge moved → affects vertical shared edges where this window is B
+        if abs(leftDelta) > 0.5 {
+            for edge in sharedEdges where edge.axis == .vertical && edge.windowBId == changedWindowId {
+                if let neighbor = entry(forWindow: edge.windowAId) {
+                    let adjusted = CGRect(
+                        x: neighbor.frame.origin.x,
+                        y: neighbor.frame.origin.y,
+                        width: neighbor.frame.width + leftDelta,
+                        height: neighbor.frame.height
+                    )
+                    adjustments.append(FrameAdjustment(windowId: edge.windowAId, newFrame: adjusted))
+                }
+            }
+        }
+
+        // Bottom edge moved → affects horizontal shared edges where this window is A
+        if abs(bottomDelta) > 0.5 {
+            for edge in sharedEdges where edge.axis == .horizontal && edge.windowAId == changedWindowId {
+                if let neighbor = entry(forWindow: edge.windowBId) {
+                    let adjusted = CGRect(
+                        x: neighbor.frame.origin.x,
+                        y: neighbor.frame.origin.y + bottomDelta,
+                        width: neighbor.frame.width,
+                        height: neighbor.frame.height - bottomDelta
+                    )
+                    adjustments.append(FrameAdjustment(windowId: edge.windowBId, newFrame: adjusted))
+                }
+            }
+        }
+
+        // Top edge moved → affects horizontal shared edges where this window is B
+        if abs(topDelta) > 0.5 {
+            for edge in sharedEdges where edge.axis == .horizontal && edge.windowBId == changedWindowId {
+                if let neighbor = entry(forWindow: edge.windowAId) {
+                    let adjusted = CGRect(
+                        x: neighbor.frame.origin.x,
+                        y: neighbor.frame.origin.y,
+                        width: neighbor.frame.width,
+                        height: neighbor.frame.height + topDelta
+                    )
+                    adjustments.append(FrameAdjustment(windowId: edge.windowAId, newFrame: adjusted))
+                }
+            }
+        }
+
+        return adjustments
+    }
+
     // MARK: - Edge Detection
 
     private static func detectSharedEdges(

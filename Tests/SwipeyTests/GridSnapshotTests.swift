@@ -86,4 +86,94 @@ struct GridSnapshotTests {
         #expect(edges.count == 1)
         #expect(edges[0].axis == .vertical)
     }
+
+    @Test("Propagation: right edge of left-half moves right, left edge of right-half follows")
+    func propagateVerticalEdge() {
+        var snapshot = GridSnapshot(
+            windows: [(id: 1, frame: leftHalf), (id: 2, frame: rightHalf)],
+            screenFrame: screenFrame
+        )
+        // Simulate left-half's right edge moving +50pt (user dragged it)
+        let newLeftFrame = CGRect(
+            x: leftHalf.origin.x,
+            y: leftHalf.origin.y,
+            width: leftHalf.width + 50,
+            height: leftHalf.height
+        )
+        snapshot.updateFrame(forWindow: 1, newFrame: newLeftFrame)
+
+        let adjustments = snapshot.computePropagation(
+            changedWindowId: 1,
+            oldFrame: leftHalf,
+            newFrame: newLeftFrame
+        )
+
+        #expect(adjustments.count == 1)
+        #expect(adjustments[0].windowId == 2)
+        // Right-half's left edge should move +50, so x increases by 50 and width decreases by 50
+        #expect(abs(adjustments[0].newFrame.origin.x - (rightHalf.origin.x + 50)) < 1)
+        #expect(abs(adjustments[0].newFrame.width - (rightHalf.width - 50)) < 1)
+        // Height and y unchanged
+        #expect(abs(adjustments[0].newFrame.origin.y - rightHalf.origin.y) < 1)
+        #expect(abs(adjustments[0].newFrame.height - rightHalf.height) < 1)
+    }
+
+    @Test("Propagation: bottom edge of top-left moves down, top edge of bottom-left follows")
+    func propagateHorizontalEdge() {
+        var snapshot = GridSnapshot(
+            windows: [
+                (id: 1, frame: topLeft),
+                (id: 2, frame: topRight),
+                (id: 3, frame: bottomLeft),
+                (id: 4, frame: bottomRight),
+            ],
+            screenFrame: screenFrame
+        )
+        // Top-left's bottom edge moves down 30pt
+        let newTopLeft = CGRect(
+            x: topLeft.origin.x,
+            y: topLeft.origin.y,
+            width: topLeft.width,
+            height: topLeft.height + 30
+        )
+        snapshot.updateFrame(forWindow: 1, newFrame: newTopLeft)
+
+        let adjustments = snapshot.computePropagation(
+            changedWindowId: 1,
+            oldFrame: topLeft,
+            newFrame: newTopLeft
+        )
+
+        // Should affect bottom-left (shares horizontal edge)
+        #expect(adjustments.count == 1)
+        let adj = adjustments[0]
+        #expect(adj.windowId == 3)
+        // Bottom-left's top edge moves down 30pt
+        #expect(abs(adj.newFrame.origin.y - (bottomLeft.origin.y + 30)) < 1)
+        #expect(abs(adj.newFrame.height - (bottomLeft.height - 30)) < 1)
+    }
+
+    @Test("No propagation for window marked as adjusting")
+    func noPropagationForAdjusting() {
+        var snapshot = GridSnapshot(
+            windows: [(id: 1, frame: leftHalf), (id: 2, frame: rightHalf)],
+            screenFrame: screenFrame
+        )
+        snapshot.setAdjusting(true, forWindow: 1)
+
+        let newLeftFrame = CGRect(
+            x: leftHalf.origin.x,
+            y: leftHalf.origin.y,
+            width: leftHalf.width + 50,
+            height: leftHalf.height
+        )
+
+        let adjustments = snapshot.computePropagation(
+            changedWindowId: 1,
+            oldFrame: leftHalf,
+            newFrame: newLeftFrame
+        )
+
+        #expect(adjustments.isEmpty)
+    }
 }
