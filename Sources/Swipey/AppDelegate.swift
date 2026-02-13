@@ -16,6 +16,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var permissionTimer: Timer?
     private var onboardingController: OnboardingController?
     private var onboardingTriggered = false
+    private var zoomToggleMonitor: ZoomToggleMonitor!
+    private var zoomManager: ZoomManager!
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.accessory)
@@ -28,6 +30,16 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         gestureMonitor = GestureMonitor(windowManager: windowManager, previewOverlay: previewOverlay, cursorIndicator: cursorIndicator)
         gestureMonitor.start()
 
+        zoomManager = ZoomManager(windowManager: windowManager)
+        zoomToggleMonitor = ZoomToggleMonitor()
+        zoomToggleMonitor.onActivated = { [weak self] in
+            self?.zoomManager.toggleFocusedWindow()
+        }
+        zoomToggleMonitor.onHoldReleased = { [weak self] in
+            self?.zoomManager.collapseFocusedWindow()
+        }
+        zoomToggleMonitor.start()
+
         gestureMonitor.onTileAction = { [weak self] position in
             MainActor.assumeIsolated {
                 self?.onboardingController?.handleTileAction(position)
@@ -38,6 +50,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated {
                 self?.onboardingController?.handleGestureCancelled()
             }
+        }
+
+        gestureMonitor.onWindowTiled = { [weak self] window in
+            self?.zoomManager.clearZoomState(for: window)
         }
 
         statusBarController.onShowTutorial = { [weak self] in
@@ -55,6 +71,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 if self.accessibilityManager.isTrusted && !self.gestureMonitor.isRunning {
                     logger.warning("[Swipey] Accessibility granted — retrying event tap...")
                     self.gestureMonitor.start()
+                }
+
+                if !self.zoomToggleMonitor.isRunning {
+                    self.zoomToggleMonitor.start()
                 }
 
                 // First-launch onboarding: show once accessibility is granted

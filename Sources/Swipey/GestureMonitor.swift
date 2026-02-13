@@ -24,6 +24,8 @@ final class GestureMonitor: @unchecked Sendable {
     var onTileAction: ((TilePosition) -> Void)?
     /// Callback fired when a gesture is cancelled due to inactivity.
     var onGestureCancelled: (() -> Void)?
+    /// Called when a window is about to be tiled (so zoom state can be cleared).
+    var onWindowTiled: ((AXUIElement) -> Void)?
 
     /// Cooldown: ignore new gestures for a short period after tiling.
     private var cooldownUntil: CFAbsoluteTime = 0
@@ -270,6 +272,7 @@ final class GestureMonitor: @unchecked Sendable {
             cooldownUntil = CFAbsoluteTimeGetCurrent() + cooldownDuration
             let tilePosition = position ?? .restore
             logger.warning("[Swipey] exiting fullscreen → \(String(describing: tilePosition))")
+            onWindowTiled?(window)
             windowManager.exitFullscreenAndTile(window: window, to: tilePosition, on: screen)
             DispatchQueue.main.async { [weak self] in self?.onTileAction?(tilePosition) }
             return
@@ -282,6 +285,7 @@ final class GestureMonitor: @unchecked Sendable {
         cooldownUntil = CFAbsoluteTimeGetCurrent() + cooldownDuration
 
         logger.warning("[Swipey] tiling to \(String(describing: position))")
+        onWindowTiled?(window)
         windowManager.tile(window: window, to: position, on: screen)
         DispatchQueue.main.async { [weak self] in self?.onTileAction?(position) }
     }
