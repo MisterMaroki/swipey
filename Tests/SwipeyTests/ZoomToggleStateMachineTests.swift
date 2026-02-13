@@ -51,24 +51,24 @@ struct ZoomToggleStateMachineTests {
 
     // MARK: - Hold vs toggle detection
 
-    @Test("Quick release after activation signals hold-release")
+    @Test("Quick release after activation is toggle (no action on release)")
     func quickRelease() {
         var sm = ZoomToggleStateMachine()
         _ = sm.feed(.cmdDown(.left), at: 0)
         _ = sm.feed(.cmdUp(.left), at: 0.05)
         _ = sm.feed(.cmdDown(.left), at: 0.1)
-        // Release second key within 500ms of activation
-        #expect(sm.feed(.cmdUp(.left), at: 0.3) == .holdReleased)
+        // Release second key within 500ms — toggle mode, stay expanded
+        #expect(sm.feed(.cmdUp(.left), at: 0.3) == nil)
     }
 
-    @Test("Slow release after activation signals toggle (no action)")
-    func slowRelease() {
+    @Test("Held release after activation signals hold-release (collapse)")
+    func heldRelease() {
         var sm = ZoomToggleStateMachine()
         _ = sm.feed(.cmdDown(.left), at: 0)
         _ = sm.feed(.cmdUp(.left), at: 0.05)
         _ = sm.feed(.cmdDown(.left), at: 0.1)
-        // Release second key after 500ms of activation
-        #expect(sm.feed(.cmdUp(.left), at: 0.7) == nil)  // toggle mode, no action on release
+        // Release second key after 500ms — hold mode, collapse
+        #expect(sm.feed(.cmdUp(.left), at: 0.7) == .holdReleased)
     }
 
     // MARK: - Sequence after activation
@@ -76,11 +76,11 @@ struct ZoomToggleStateMachineTests {
     @Test("New sequence works after activation completes")
     func sequenceAfterActivation() {
         var sm = ZoomToggleStateMachine()
-        // First activation
+        // First activation (quick release = toggle mode)
         _ = sm.feed(.cmdDown(.left), at: 0)
         _ = sm.feed(.cmdUp(.left), at: 0.05)
         _ = sm.feed(.cmdDown(.left), at: 0.1)
-        _ = sm.feed(.cmdUp(.left), at: 0.7)  // slow release, toggle mode
+        _ = sm.feed(.cmdUp(.left), at: 0.3)  // quick release, toggle mode
 
         // Second activation (should work)
         #expect(sm.feed(.cmdDown(.left), at: 1.0) == nil)

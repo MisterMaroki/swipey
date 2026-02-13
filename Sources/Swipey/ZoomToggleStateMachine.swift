@@ -87,9 +87,9 @@ public struct ZoomToggleStateMachine: Sendable {
             if case .cmdUp(let upSide) = input, upSide == secondSide {
                 state = .idle
                 if timestamp - activationTime <= holdThreshold {
-                    return .holdReleased
+                    return nil  // quick release -- toggle mode, stay expanded
                 }
-                return nil  // toggle mode -- no action on release
+                return .holdReleased  // held long enough -- collapse on release
             }
             return nil
         }
