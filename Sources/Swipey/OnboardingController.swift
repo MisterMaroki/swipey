@@ -115,7 +115,7 @@ final class OnboardingController: NSObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                 guard let self, let window = self.window, window.isVisible else { return }
                 window.showFinal()
-                UserDefaults.standard.set(true, forKey: "onboardingCompleted")
+                UserDefaults.standard.set(kOnboardingVersion, forKey: "onboardingCompletedVersion")
                 logger.warning("[Swipey] Onboarding completed")
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in

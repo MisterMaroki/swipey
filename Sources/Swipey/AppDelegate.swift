@@ -86,7 +86,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
                 // First-launch onboarding: show once accessibility is granted
                 if self.accessibilityManager.isTrusted && !self.onboardingTriggered {
                     self.onboardingTriggered = true
-                    if !UserDefaults.standard.bool(forKey: "onboardingCompleted") {
+                    let completedVersion = UserDefaults.standard.integer(forKey: "onboardingCompletedVersion")
+                    if completedVersion < kOnboardingVersion {
                         self.startOnboarding()
                     }
                 }
