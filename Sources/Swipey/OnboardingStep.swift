@@ -17,6 +17,7 @@ struct OnboardingStep: Sendable {
     let acceptsZoomHoldReleased: Bool
     let completionMessage: String
     let hint: StepHint
+    let trackpadGesture: TrackpadHintView.Gesture?
     /// If set, the step auto-advances after this delay (no user action needed).
     let autoAdvanceDelay: TimeInterval?
 
@@ -27,6 +28,7 @@ struct OnboardingStep: Sendable {
         acceptsZoomActivated: Bool = false,
         acceptsZoomHoldReleased: Bool = false,
         hint: StepHint = .none,
+        trackpadGesture: TrackpadHintView.Gesture? = nil,
         autoAdvanceDelay: TimeInterval? = nil,
         completionMessage: String
     ) {
@@ -36,6 +38,7 @@ struct OnboardingStep: Sendable {
         self.acceptsZoomActivated = acceptsZoomActivated
         self.acceptsZoomHoldReleased = acceptsZoomHoldReleased
         self.hint = hint
+        self.trackpadGesture = trackpadGesture
         self.autoAdvanceDelay = autoAdvanceDelay
         self.completionMessage = completionMessage
     }
@@ -51,24 +54,28 @@ struct OnboardingStep: Sendable {
             instruction: "Two-finger swipe right on the title bar",
             expectedPositions: [.rightHalf],
             hint: .titleBarDiagram,
+            trackpadGesture: .swipeRight,
             completionMessage: "Nice! You tiled to the right half."
         ),
         OnboardingStep(
             instruction: "Two-finger swipe to the bottom-left quarter",
             expectedPositions: [.bottomLeftQuarter],
             hint: .indicator(.bottomLeftQuarter),
+            trackpadGesture: .swipeDownLeft,
             completionMessage: "Great! You nailed the quarter tile."
         ),
         OnboardingStep(
             instruction: "Two-finger swipe up to maximise",
             expectedPositions: [.maximize],
             hint: .indicator(.maximize),
+            trackpadGesture: .swipeUp,
             completionMessage: "Maximised! Now try going faster for fullscreen."
         ),
         OnboardingStep(
             instruction: "Two-finger swipe up faster this time for fullscreen",
             expectedPositions: [.fullscreen],
             hint: .indicator(.fullscreen),
+            trackpadGesture: .swipeUpFast,
             completionMessage: "Fullscreen! Looking good."
         ),
         OnboardingStep(
@@ -79,18 +86,21 @@ struct OnboardingStep: Sendable {
                 .bottomLeftQuarter, .bottomRightQuarter,
             ],
             hint: .indicator(.restore),
+            trackpadGesture: .swipeDown,
             completionMessage: "You're a natural!"
         ),
         OnboardingStep(
-            instruction: "Start a swipe, then hold still for 3 seconds to cancel",
+            instruction: "Start a swipe, then hold still to cancel",
             acceptsCancellation: true,
             hint: .cancelIndicator,
+            trackpadGesture: .swipeAndHold,
             completionMessage: "Cancelled! Now you know how to bail out."
         ),
         OnboardingStep(
-            instruction: "Now let's teach you how to multitask effectively. Tile this window to the bottom-right quarter",
+            instruction: "Tile this window to the bottom-right quarter",
             expectedPositions: [.bottomRightQuarter],
             hint: .indicator(.bottomRightQuarter),
+            trackpadGesture: .swipeDownRight,
             completionMessage: "Perfect! Now let's expand it."
         ),
         OnboardingStep(

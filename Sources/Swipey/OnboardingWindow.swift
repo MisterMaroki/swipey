@@ -8,12 +8,17 @@ final class OnboardingWindow: NSWindow {
     private let progressBar: NSView
     private let progressTrack: NSView
     private var progressWidthConstraint: NSLayoutConstraint?
+
+    private let hintStack = NSStackView()
+    private let trackpadHint = TrackpadHintView()
     private let titleBarHint = TitleBarHintView()
     private let indicatorHint = IndicatorHintView()
+
     private let welcomeContainer = NSView()
     private let welcomeIcon = NSImageView()
     private let welcomeTitle = NSTextField(labelWithString: "")
     private let welcomeSubtitle = NSTextField(labelWithString: "")
+
     private var instructionCenteredConstraint: NSLayoutConstraint!
     private var instructionTopConstraint: NSLayoutConstraint!
 
@@ -42,7 +47,8 @@ final class OnboardingWindow: NSWindow {
 
     // MARK: - Public
 
-    func showStep(index: Int, total: Int, instruction: String, hint: StepHint) {
+    func showStep(index: Int, total: Int, instruction: String,
+                  hint: StepHint, trackpadGesture: TrackpadHintView.Gesture?) {
         instructionLabel.stringValue = instruction
         doneLabel.isHidden = true
         instructionLabel.isHidden = false
@@ -51,7 +57,7 @@ final class OnboardingWindow: NSWindow {
         progressTrack.isHidden = false
         updateProgress(fraction: CGFloat(index) / CGFloat(total))
 
-        showHint(hint)
+        showHint(hint, trackpadGesture: trackpadGesture)
     }
 
     func showCompletion(message: String, index: Int, total: Int) {
@@ -73,14 +79,10 @@ final class OnboardingWindow: NSWindow {
 
     // MARK: - Hints
 
-    private func showHint(_ hint: StepHint) {
+    private func showHint(_ hint: StepHint, trackpadGesture: TrackpadHintView.Gesture?) {
         hideAllHints()
 
-        switch hint {
-        case .none:
-            break
-
-        case .welcome:
+        if case .welcome = hint {
             instructionLabel.isHidden = true
             stepLabel.isHidden = true
             progressTrack.isHidden = true
@@ -91,49 +93,64 @@ final class OnboardingWindow: NSWindow {
                 ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
                 welcomeContainer.animator().alphaValue = 1
             }
+            return
+        }
+
+        if case .none = hint { return }
+
+        // Move instruction label to top for hint area
+        instructionCenteredConstraint.isActive = false
+        instructionTopConstraint.isActive = true
+
+        // Add trackpad to the stack if gesture provided
+        if let gesture = trackpadGesture {
+            trackpadHint.configure(gesture: gesture)
+            hintStack.addArrangedSubview(trackpadHint)
+            trackpadHint.startAnimating()
+        }
+
+        // Add the right-side hint to the stack
+        switch hint {
+        case .none, .welcome:
+            break
 
         case .titleBarDiagram:
-            instructionCenteredConstraint.isActive = false
-            instructionTopConstraint.isActive = true
-            titleBarHint.isHidden = false
+            hintStack.addArrangedSubview(titleBarHint)
             titleBarHint.startAnimating()
 
         case .indicator(let position):
-            instructionCenteredConstraint.isActive = false
-            instructionTopConstraint.isActive = true
-            indicatorHint.isHidden = false
             indicatorHint.configure(position: position)
+            hintStack.addArrangedSubview(indicatorHint)
             indicatorHint.startAnimating()
 
         case .cancelIndicator:
-            instructionCenteredConstraint.isActive = false
-            instructionTopConstraint.isActive = true
-            indicatorHint.isHidden = false
             indicatorHint.configureCancel()
+            hintStack.addArrangedSubview(indicatorHint)
             indicatorHint.startAnimating()
 
         case .doubleTapCmd:
-            instructionCenteredConstraint.isActive = false
-            instructionTopConstraint.isActive = true
-            indicatorHint.isHidden = false
             indicatorHint.configureKeyboard(mode: .doubleTap)
+            hintStack.addArrangedSubview(indicatorHint)
             indicatorHint.startAnimating()
 
         case .holdCmd:
-            instructionCenteredConstraint.isActive = false
-            instructionTopConstraint.isActive = true
-            indicatorHint.isHidden = false
             indicatorHint.configureKeyboard(mode: .hold)
+            hintStack.addArrangedSubview(indicatorHint)
             indicatorHint.startAnimating()
         }
+
+        hintStack.isHidden = hintStack.arrangedSubviews.isEmpty
     }
 
     private func hideAllHints() {
-        titleBarHint.isHidden = true
+        trackpadHint.stopAnimating()
         titleBarHint.stopAnimating()
-        indicatorHint.isHidden = true
         indicatorHint.stopAnimating()
         welcomeContainer.isHidden = true
+
+        hintStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        hintStack.isHidden = true
+
         instructionTopConstraint.isActive = false
         instructionCenteredConstraint.isActive = true
     }
@@ -185,11 +202,25 @@ final class OnboardingWindow: NSWindow {
         progressBar.layer?.cornerRadius = 2
         progressBar.translatesAutoresizingMaskIntoConstraints = false
 
-        titleBarHint.translatesAutoresizingMaskIntoConstraints = false
-        titleBarHint.isHidden = true
+        // Hint stack (arranges trackpad + right-side hint horizontally)
+        hintStack.orientation = .horizontal
+        hintStack.spacing = 20
+        hintStack.alignment = .centerY
+        hintStack.translatesAutoresizingMaskIntoConstraints = false
+        hintStack.isHidden = true
 
+        // Hint views need translatesAutoresizing off for stack view
+        trackpadHint.translatesAutoresizingMaskIntoConstraints = false
+        titleBarHint.translatesAutoresizingMaskIntoConstraints = false
         indicatorHint.translatesAutoresizingMaskIntoConstraints = false
-        indicatorHint.isHidden = true
+
+        // Set content hugging so views stay at intrinsic size in the stack
+        for view in [trackpadHint, titleBarHint, indicatorHint] as [NSView] {
+            view.setContentHuggingPriority(.required, for: .horizontal)
+            view.setContentHuggingPriority(.required, for: .vertical)
+            view.setContentCompressionResistancePriority(.required, for: .horizontal)
+            view.setContentCompressionResistancePriority(.required, for: .vertical)
+        }
 
         // Welcome layout
         welcomeContainer.translatesAutoresizingMaskIntoConstraints = false
@@ -221,8 +252,7 @@ final class OnboardingWindow: NSWindow {
 
         effectView.addSubview(instructionLabel)
         effectView.addSubview(doneLabel)
-        effectView.addSubview(titleBarHint)
-        effectView.addSubview(indicatorHint)
+        effectView.addSubview(hintStack)
         effectView.addSubview(welcomeContainer)
         effectView.addSubview(stepLabel)
         effectView.addSubview(progressTrack)
@@ -235,17 +265,9 @@ final class OnboardingWindow: NSWindow {
             instructionLabel.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
             instructionLabel.widthAnchor.constraint(lessThanOrEqualTo: effectView.widthAnchor, constant: -60),
 
-            titleBarHint.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
-            titleBarHint.topAnchor.constraint(equalTo: instructionLabel.bottomAnchor, constant: 12),
-            titleBarHint.widthAnchor.constraint(equalToConstant: 220),
-            titleBarHint.heightAnchor.constraint(equalToConstant: 130),
+            hintStack.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
+            hintStack.topAnchor.constraint(equalTo: instructionLabel.bottomAnchor, constant: 12),
 
-            indicatorHint.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
-            indicatorHint.topAnchor.constraint(equalTo: instructionLabel.bottomAnchor, constant: 12),
-            indicatorHint.widthAnchor.constraint(equalToConstant: 220),
-            indicatorHint.heightAnchor.constraint(equalToConstant: 120),
-
-            // Welcome container centered in window
             welcomeContainer.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
             welcomeContainer.centerYAnchor.constraint(equalTo: effectView.centerYAnchor, constant: -10),
             welcomeContainer.widthAnchor.constraint(lessThanOrEqualTo: effectView.widthAnchor, constant: -60),

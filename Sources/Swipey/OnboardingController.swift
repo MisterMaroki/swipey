@@ -29,7 +29,8 @@ final class OnboardingController: NSObject {
         self.window = win
 
         win.delegate = self
-        win.showStep(index: 0, total: steps.count, instruction: steps[0].instruction, hint: steps[0].hint)
+        win.showStep(index: 0, total: steps.count, instruction: steps[0].instruction,
+                     hint: steps[0].hint, trackpadGesture: steps[0].trackpadGesture)
 
         NSApp.activate(ignoringOtherApps: true)
         win.makeKeyAndOrderFront(nil)
@@ -108,7 +109,8 @@ final class OnboardingController: NSObject {
                     index: self.currentStepIndex,
                     total: self.steps.count,
                     instruction: self.steps[self.currentStepIndex].instruction,
-                    hint: self.steps[self.currentStepIndex].hint
+                    hint: self.steps[self.currentStepIndex].hint,
+                    trackpadGesture: self.steps[self.currentStepIndex].trackpadGesture
                 )
                 self.scheduleAutoAdvanceIfNeeded()
             }
