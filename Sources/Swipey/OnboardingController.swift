@@ -13,6 +13,15 @@ final class OnboardingController: NSObject {
     private func playSuccess() { NSSound(named: "Glass")?.play() }
     private func playNotQuite() { NSSound(named: "Funk")?.play() }
 
+    private func playCrescendo() {
+        let sounds: [NSSound.Name] = ["Morse", "Tink", "Glass"]
+        for (i, name) in sounds.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.4) {
+                NSSound(named: name)?.play()
+            }
+        }
+    }
+
     func start() {
         currentStepIndex = 0
 
@@ -25,7 +34,21 @@ final class OnboardingController: NSObject {
         NSApp.activate(ignoringOtherApps: true)
         win.makeKeyAndOrderFront(nil)
 
+        playCrescendo()
+        scheduleAutoAdvanceIfNeeded()
+
         logger.warning("[Swipey] Onboarding started")
+    }
+
+    private func scheduleAutoAdvanceIfNeeded() {
+        guard currentStepIndex < steps.count,
+              let delay = steps[currentStepIndex].autoAdvanceDelay else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, let window = self.window, window.isVisible else { return }
+            guard self.currentStepIndex < self.steps.count,
+                  self.steps[self.currentStepIndex].autoAdvanceDelay != nil else { return }
+            self.advanceStep()
+        }
     }
 
     func handleGestureCancelled() {
@@ -86,6 +109,7 @@ final class OnboardingController: NSObject {
                     total: self.steps.count,
                     instruction: self.steps[self.currentStepIndex].instruction
                 )
+                self.scheduleAutoAdvanceIfNeeded()
             }
         } else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in

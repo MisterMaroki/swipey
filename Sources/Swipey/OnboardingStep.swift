@@ -1,3 +1,5 @@
+import Foundation
+
 struct OnboardingStep: Sendable {
     let instruction: String
     let expectedPositions: Set<TilePosition>
@@ -5,6 +7,8 @@ struct OnboardingStep: Sendable {
     let acceptsZoomActivated: Bool
     let acceptsZoomHoldReleased: Bool
     let completionMessage: String
+    /// If set, the step auto-advances after this delay (no user action needed).
+    let autoAdvanceDelay: TimeInterval?
 
     init(
         instruction: String,
@@ -12,6 +16,7 @@ struct OnboardingStep: Sendable {
         acceptsCancellation: Bool = false,
         acceptsZoomActivated: Bool = false,
         acceptsZoomHoldReleased: Bool = false,
+        autoAdvanceDelay: TimeInterval? = nil,
         completionMessage: String
     ) {
         self.instruction = instruction
@@ -19,10 +24,16 @@ struct OnboardingStep: Sendable {
         self.acceptsCancellation = acceptsCancellation
         self.acceptsZoomActivated = acceptsZoomActivated
         self.acceptsZoomHoldReleased = acceptsZoomHoldReleased
+        self.autoAdvanceDelay = autoAdvanceDelay
         self.completionMessage = completionMessage
     }
 
     static let steps: [OnboardingStep] = [
+        OnboardingStep(
+            instruction: "Welcome to Swipey! Let's become window tiling wizards together. Screen real estate tycoons!",
+            autoAdvanceDelay: 3.0,
+            completionMessage: "Let's go!"
+        ),
         OnboardingStep(
             instruction: "Two-finger swipe right on the title bar",
             expectedPositions: [.rightHalf],
