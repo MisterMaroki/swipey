@@ -18,6 +18,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var onboardingTriggered = false
     private var zoomToggleMonitor: ZoomToggleMonitor!
     private var zoomManager: ZoomManager!
+    private var gridResizeManager: GridResizeManager!
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.accessory)
@@ -45,6 +46,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         zoomToggleMonitor.start()
+
+        gridResizeManager = GridResizeManager()
+        gridResizeManager.start()
 
         gestureMonitor.onTileAction = { [weak self] position in
             MainActor.assumeIsolated {
@@ -81,6 +85,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
                 if self.accessibilityManager.isTrusted && !self.zoomToggleMonitor.isRunning {
                     self.zoomToggleMonitor.start()
+                }
+
+                if self.accessibilityManager.isTrusted && !self.gridResizeManager.isRunning {
+                    self.gridResizeManager.start()
                 }
 
                 // First-launch onboarding: show once accessibility is granted
