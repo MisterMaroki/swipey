@@ -8,6 +8,7 @@ final class OnboardingWindow: NSWindow {
     private let progressBar: NSView
     private let progressTrack: NSView
     private var progressWidthConstraint: NSLayoutConstraint?
+    private let swipeHintView = SwipeHintView(frame: .zero)
 
     init() {
         instructionLabel = NSTextField(labelWithString: "")
@@ -34,7 +35,7 @@ final class OnboardingWindow: NSWindow {
 
     // MARK: - Public
 
-    func showStep(index: Int, total: Int, instruction: String) {
+    func showStep(index: Int, total: Int, instruction: String, swipeHint: SwipeHint? = nil) {
         instructionLabel.stringValue = instruction
         doneLabel.isHidden = true
         instructionLabel.isHidden = false
@@ -42,12 +43,22 @@ final class OnboardingWindow: NSWindow {
         stepLabel.isHidden = false
         progressTrack.isHidden = false
         updateProgress(fraction: CGFloat(index) / CGFloat(total))
+
+        if let hint = swipeHint {
+            swipeHintView.isHidden = false
+            swipeHintView.show(direction: hint)
+        } else {
+            swipeHintView.hide()
+            swipeHintView.isHidden = true
+        }
     }
 
     func showCompletion(message: String, index: Int, total: Int) {
         doneLabel.stringValue = message
         doneLabel.isHidden = false
         instructionLabel.isHidden = true
+        swipeHintView.hide()
+        swipeHintView.isHidden = true
         updateProgress(fraction: CGFloat(index + 1) / CGFloat(total))
     }
 
@@ -56,6 +67,8 @@ final class OnboardingWindow: NSWindow {
         instructionLabel.isHidden = false
         doneLabel.isHidden = true
         stepLabel.isHidden = true
+        swipeHintView.hide()
+        swipeHintView.isHidden = true
         updateProgress(fraction: 1.0)
     }
 
@@ -106,8 +119,12 @@ final class OnboardingWindow: NSWindow {
         progressBar.layer?.cornerRadius = 2
         progressBar.translatesAutoresizingMaskIntoConstraints = false
 
+        swipeHintView.translatesAutoresizingMaskIntoConstraints = false
+        swipeHintView.isHidden = true
+
         effectView.addSubview(instructionLabel)
         effectView.addSubview(doneLabel)
+        effectView.addSubview(swipeHintView)
         effectView.addSubview(stepLabel)
         effectView.addSubview(progressTrack)
         progressTrack.addSubview(progressBar)
@@ -117,8 +134,13 @@ final class OnboardingWindow: NSWindow {
 
         NSLayoutConstraint.activate([
             instructionLabel.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
-            instructionLabel.centerYAnchor.constraint(equalTo: effectView.centerYAnchor, constant: -10),
+            instructionLabel.centerYAnchor.constraint(equalTo: effectView.centerYAnchor, constant: -30),
             instructionLabel.widthAnchor.constraint(lessThanOrEqualTo: effectView.widthAnchor, constant: -60),
+
+            swipeHintView.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
+            swipeHintView.topAnchor.constraint(equalTo: instructionLabel.bottomAnchor, constant: 12),
+            swipeHintView.widthAnchor.constraint(equalToConstant: 120),
+            swipeHintView.heightAnchor.constraint(equalToConstant: 50),
 
             doneLabel.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
             doneLabel.centerYAnchor.constraint(equalTo: effectView.centerYAnchor, constant: -10),

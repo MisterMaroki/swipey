@@ -1,5 +1,10 @@
 import Foundation
 
+enum SwipeHint: Sendable {
+    case right, left, up, down
+    case upLeft, upRight, downLeft, downRight
+}
+
 struct OnboardingStep: Sendable {
     let instruction: String
     let expectedPositions: Set<TilePosition>
@@ -9,6 +14,8 @@ struct OnboardingStep: Sendable {
     let completionMessage: String
     /// If set, the step auto-advances after this delay (no user action needed).
     let autoAdvanceDelay: TimeInterval?
+    /// Animated directional hint shown below the instruction.
+    let swipeHint: SwipeHint?
 
     init(
         instruction: String,
@@ -17,6 +24,7 @@ struct OnboardingStep: Sendable {
         acceptsZoomActivated: Bool = false,
         acceptsZoomHoldReleased: Bool = false,
         autoAdvanceDelay: TimeInterval? = nil,
+        swipeHint: SwipeHint? = nil,
         completionMessage: String
     ) {
         self.instruction = instruction
@@ -25,6 +33,7 @@ struct OnboardingStep: Sendable {
         self.acceptsZoomActivated = acceptsZoomActivated
         self.acceptsZoomHoldReleased = acceptsZoomHoldReleased
         self.autoAdvanceDelay = autoAdvanceDelay
+        self.swipeHint = swipeHint
         self.completionMessage = completionMessage
     }
 
@@ -37,21 +46,25 @@ struct OnboardingStep: Sendable {
         OnboardingStep(
             instruction: "Two-finger swipe right on the title bar",
             expectedPositions: [.rightHalf],
+            swipeHint: .right,
             completionMessage: "Nice! You tiled to the right half."
         ),
         OnboardingStep(
             instruction: "Two-finger swipe to the bottom-left quarter",
             expectedPositions: [.bottomLeftQuarter],
+            swipeHint: .downLeft,
             completionMessage: "Great! You nailed the quarter tile."
         ),
         OnboardingStep(
             instruction: "Two-finger swipe up to maximise",
             expectedPositions: [.maximize],
+            swipeHint: .up,
             completionMessage: "Maximised! Now try going faster for fullscreen."
         ),
         OnboardingStep(
             instruction: "Two-finger swipe up faster this time for fullscreen",
             expectedPositions: [.fullscreen],
+            swipeHint: .up,
             completionMessage: "Fullscreen! Looking good."
         ),
         OnboardingStep(
@@ -61,6 +74,7 @@ struct OnboardingStep: Sendable {
                 .maximize, .topLeftQuarter, .topRightQuarter,
                 .bottomLeftQuarter, .bottomRightQuarter,
             ],
+            swipeHint: .down,
             completionMessage: "You're a natural!"
         ),
         OnboardingStep(
