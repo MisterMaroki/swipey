@@ -204,6 +204,26 @@ final class WindowManager: @unchecked Sendable {
         return NSScreen.main
     }
 
+    // MARK: - Public AX helpers (for ZoomManager)
+
+    func getWindowPosition(_ window: AXUIElement) -> CGPoint? {
+        return getPosition(of: window)
+    }
+
+    func getWindowSize(_ window: AXUIElement) -> CGSize? {
+        return getSize(of: window)
+    }
+
+    /// Animate window to a frame specified in NS coordinates (bottom-left origin).
+    func animateToNSFrame(window: AXUIElement, frame nsFrame: CGRect) {
+        guard let mainScreen = NSScreen.screens.first else { return }
+        let cgOrigin = CGPoint(
+            x: nsFrame.origin.x,
+            y: mainScreen.frame.height - nsFrame.origin.y - nsFrame.height
+        )
+        animateTile(window: window, to: cgOrigin, size: nsFrame.size)
+    }
+
     // MARK: - AX helpers
 
     private func getPosition(of window: AXUIElement) -> CGPoint? {
