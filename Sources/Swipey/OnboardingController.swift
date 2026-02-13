@@ -39,6 +39,20 @@ final class OnboardingController: NSObject {
         advanceStep()
     }
 
+    func handleZoomActivated() {
+        guard let window, window.isVisible else { return }
+        guard currentStepIndex < steps.count else { return }
+        guard steps[currentStepIndex].acceptsZoomActivated else { return }
+        advanceStep()
+    }
+
+    func handleZoomHoldReleased() {
+        guard let window, window.isVisible else { return }
+        guard currentStepIndex < steps.count else { return }
+        guard steps[currentStepIndex].acceptsZoomHoldReleased else { return }
+        advanceStep()
+    }
+
     private func advanceStep() {
         guard let window else { return }
 

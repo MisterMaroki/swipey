@@ -2,12 +2,23 @@ struct OnboardingStep: Sendable {
     let instruction: String
     let expectedPositions: Set<TilePosition>
     let acceptsCancellation: Bool
+    let acceptsZoomActivated: Bool
+    let acceptsZoomHoldReleased: Bool
     let completionMessage: String
 
-    init(instruction: String, expectedPositions: Set<TilePosition>, acceptsCancellation: Bool = false, completionMessage: String) {
+    init(
+        instruction: String,
+        expectedPositions: Set<TilePosition> = [],
+        acceptsCancellation: Bool = false,
+        acceptsZoomActivated: Bool = false,
+        acceptsZoomHoldReleased: Bool = false,
+        completionMessage: String
+    ) {
         self.instruction = instruction
         self.expectedPositions = expectedPositions
         self.acceptsCancellation = acceptsCancellation
+        self.acceptsZoomActivated = acceptsZoomActivated
+        self.acceptsZoomHoldReleased = acceptsZoomHoldReleased
         self.completionMessage = completionMessage
     }
 
@@ -43,9 +54,18 @@ struct OnboardingStep: Sendable {
         ),
         OnboardingStep(
             instruction: "Start a swipe, then hold still for 3 seconds to cancel",
-            expectedPositions: [],
             acceptsCancellation: true,
             completionMessage: "Cancelled! Now you know how to bail out."
+        ),
+        OnboardingStep(
+            instruction: "Double-tap ⌘ to expand a tiled window",
+            acceptsZoomActivated: true,
+            completionMessage: "Zoomed! Double-tap ⌘ again to restore."
+        ),
+        OnboardingStep(
+            instruction: "Double-tap and hold ⌘ to expand, then release to snap back",
+            acceptsZoomHoldReleased: true,
+            completionMessage: "Perfect! You've mastered zoom."
         ),
     ]
 }

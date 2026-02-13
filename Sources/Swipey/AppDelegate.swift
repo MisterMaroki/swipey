@@ -34,9 +34,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         zoomToggleMonitor = ZoomToggleMonitor()
         zoomToggleMonitor.onActivated = { [weak self] in
             self?.zoomManager.toggleFocusedWindow()
+            MainActor.assumeIsolated {
+                self?.onboardingController?.handleZoomActivated()
+            }
         }
         zoomToggleMonitor.onHoldReleased = { [weak self] in
             self?.zoomManager.collapseFocusedWindow()
+            MainActor.assumeIsolated {
+                self?.onboardingController?.handleZoomHoldReleased()
+            }
         }
         zoomToggleMonitor.start()
 
