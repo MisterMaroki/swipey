@@ -30,20 +30,15 @@ final class ZoomManager: @unchecked Sendable {
 
         var focusedValue: AnyObject?
         let err = AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &focusedValue)
-        guard err == .success, let window = focusedValue else {
-            logger.warning("[Swipey] No focused window found")
-            return
-        }
+        guard err == .success, let window = focusedValue else { return }
 
         let axWindow = window as! AXUIElement
         let key = Int(CFHash(axWindow))
 
         if let state = zoomedWindows[key] {
-            // Already zoomed — collapse
             collapse(window: axWindow, to: state)
             zoomedWindows.removeValue(forKey: key)
         } else {
-            // Not zoomed — try to expand
             expand(window: axWindow, key: key)
         }
     }
@@ -84,10 +79,7 @@ final class ZoomManager: @unchecked Sendable {
         guard let screen = windowManager.screen(for: window) else { return }
 
         // Determine current tile position by matching the window frame
-        guard let position = detectTilePosition(of: window, on: screen) else {
-            logger.warning("[Swipey] Window is not in a recognized tile position — zoom skipped")
-            return
-        }
+        guard let position = detectTilePosition(of: window, on: screen) else { return }
 
         let tileFrame = position.frame(for: screen)
         let expandedFrame = ZoomFrameCalculator.expandedFrame(
@@ -101,12 +93,12 @@ final class ZoomManager: @unchecked Sendable {
         // Convert from NS coordinates to CG coordinates for AX
         windowManager.animateToNSFrame(window: window, frame: expandedFrame)
 
-        logger.warning("[Swipey] Expanded \(String(describing: position)) window")
+        logger.info("[Swipey] Expanded \(String(describing: position)) window")
     }
 
     private func collapse(window: AXUIElement, to state: ZoomState) {
         windowManager.animateToNSFrame(window: window, frame: state.tileFrame)
-        logger.warning("[Swipey] Collapsed window back to \(String(describing: state.position))")
+        logger.info("[Swipey] Collapsed window back to \(String(describing: state.position))")
     }
 
     /// Try to match the window's current frame to a known tile position.

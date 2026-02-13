@@ -39,8 +39,8 @@ final class ZoomToggleMonitor: @unchecked Sendable {
 
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
-            place: .tailAppendEventTap,  // tail append — observe only, don't block
-            options: .listenOnly,         // listen only — we never consume keyboard events
+            place: .headInsertEventTap,
+            options: .defaultTap,
             eventsOfInterest: eventMask,
             callback: callback,
             userInfo: Unmanaged.passUnretained(self).toOpaque()
@@ -54,7 +54,7 @@ final class ZoomToggleMonitor: @unchecked Sendable {
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         runLoopSource = source
         CGEvent.tapEnable(tap: tap, enable: true)
-        logger.warning("[Swipey] Zoom toggle monitor started")
+        logger.info("[Swipey] Zoom toggle monitor started")
     }
 
     var isRunning: Bool {
@@ -75,6 +75,7 @@ final class ZoomToggleMonitor: @unchecked Sendable {
 
     private func handleEvent(type: CGEventType, event: CGEvent) {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            logger.info("[Swipey] Zoom toggle tap re-enabled")
             if let tap = eventTap {
                 CGEvent.tapEnable(tap: tap, enable: true)
             }
@@ -101,16 +102,14 @@ final class ZoomToggleMonitor: @unchecked Sendable {
         case kRightCmdKeycode:
             input = flags.contains(.maskCommand) ? .cmdDown(.right) : .cmdUp(.right)
         default:
-            return  // not a Cmd key
+            return
         }
 
         if let output = stateMachine.feed(input, at: timestamp) {
             switch output {
             case .activated:
-                logger.warning("[Swipey] Double-Cmd detected — toggling zoom")
                 onActivated?()
             case .holdReleased:
-                logger.warning("[Swipey] Hold released — collapsing zoom")
                 onHoldReleased?()
             }
         }

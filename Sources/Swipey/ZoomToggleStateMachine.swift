@@ -1,7 +1,7 @@
 import CoreFoundation
 
-/// Pure state machine that detects a left-Cmd -> right-Cmd (or right -> left)
-/// sequence and distinguishes hold vs toggle behavior.
+/// Pure state machine that detects a double-tap of any Cmd key
+/// and distinguishes hold vs toggle behavior.
 public struct ZoomToggleStateMachine: Sendable {
 
     public enum CmdSide: Sendable {
@@ -65,9 +65,9 @@ public struct ZoomToggleStateMachine: Sendable {
             }
             return nil
 
-        case .waitingForSecond(let firstSide, let releaseTime):
+        case .waitingForSecond(_, let releaseTime):
             switch input {
-            case .cmdDown(let downSide) where downSide == firstSide.opposite:
+            case .cmdDown(let downSide):
                 if timestamp - releaseTime <= sequenceTimeout {
                     state = .activated(secondSide: downSide, activationTime: timestamp)
                     return .activated
@@ -76,10 +76,6 @@ public struct ZoomToggleStateMachine: Sendable {
                     state = .firstKeyDown(side: downSide)
                     return nil
                 }
-            case .cmdDown(let downSide) where downSide == firstSide:
-                // Same side again -- restart as new first key
-                state = .firstKeyDown(side: downSide)
-                return nil
             case .nonModifierKey:
                 state = .idle
                 return nil
