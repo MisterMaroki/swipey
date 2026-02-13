@@ -29,8 +29,7 @@ final class OnboardingController: NSObject {
         self.window = win
 
         win.delegate = self
-        win.showStep(index: 0, total: steps.count, instruction: steps[0].instruction,
-                     swipeHint: steps[0].swipeHint)
+        win.showStep(index: 0, total: steps.count, instruction: steps[0].instruction, hint: steps[0].hint)
 
         NSApp.activate(ignoringOtherApps: true)
         win.makeKeyAndOrderFront(nil)
@@ -105,12 +104,11 @@ final class OnboardingController: NSObject {
         if currentStepIndex < steps.count {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
                 guard let self, let window = self.window, window.isVisible else { return }
-                let step = self.steps[self.currentStepIndex]
                 window.showStep(
                     index: self.currentStepIndex,
                     total: self.steps.count,
-                    instruction: step.instruction,
-                    swipeHint: step.swipeHint
+                    instruction: self.steps[self.currentStepIndex].instruction,
+                    hint: self.steps[self.currentStepIndex].hint
                 )
                 self.scheduleAutoAdvanceIfNeeded()
             }

@@ -9,6 +9,7 @@ final class OnboardingWindow: NSWindow {
     private let progressTrack: NSView
     private var progressWidthConstraint: NSLayoutConstraint?
     private let titleBarHint = TitleBarHintView()
+    private let keyboardHint = KeyboardHintView()
     private var instructionCenteredConstraint: NSLayoutConstraint!
     private var instructionTopConstraint: NSLayoutConstraint!
 
@@ -37,7 +38,7 @@ final class OnboardingWindow: NSWindow {
 
     // MARK: - Public
 
-    func showStep(index: Int, total: Int, instruction: String) {
+    func showStep(index: Int, total: Int, instruction: String, hint: StepHint) {
         instructionLabel.stringValue = instruction
         doneLabel.isHidden = true
         instructionLabel.isHidden = false
@@ -46,26 +47,14 @@ final class OnboardingWindow: NSWindow {
         progressTrack.isHidden = false
         updateProgress(fraction: CGFloat(index) / CGFloat(total))
 
-        // Show title bar hint only on the first interactive step (index 1, after welcome)
-        let showHint = (index == 1)
-        titleBarHint.isHidden = !showHint
-        if showHint {
-            titleBarHint.startAnimating()
-            instructionCenteredConstraint.isActive = false
-            instructionTopConstraint.isActive = true
-        } else {
-            titleBarHint.stopAnimating()
-            instructionTopConstraint.isActive = false
-            instructionCenteredConstraint.isActive = true
-        }
+        showHint(hint)
     }
 
     func showCompletion(message: String, index: Int, total: Int) {
         doneLabel.stringValue = message
         doneLabel.isHidden = false
         instructionLabel.isHidden = true
-        titleBarHint.isHidden = true
-        titleBarHint.stopAnimating()
+        hideAllHints()
         updateProgress(fraction: CGFloat(index + 1) / CGFloat(total))
     }
 
@@ -74,7 +63,66 @@ final class OnboardingWindow: NSWindow {
         instructionLabel.isHidden = false
         doneLabel.isHidden = true
         stepLabel.isHidden = true
+        hideAllHints()
         updateProgress(fraction: 1.0)
+    }
+
+    // MARK: - Hints
+
+    private func showHint(_ hint: StepHint) {
+        titleBarHint.stopAnimating()
+        keyboardHint.stopAnimating()
+        titleBarHint.isHidden = true
+        keyboardHint.isHidden = true
+
+        switch hint {
+        case .none:
+            instructionTopConstraint.isActive = false
+            instructionCenteredConstraint.isActive = true
+
+        case .swipeRight:
+            showSwipeHint(.right)
+        case .swipeDownLeft:
+            showSwipeHint(.downLeft)
+        case .swipeUp:
+            showSwipeHint(.up)
+        case .swipeUpFast:
+            showSwipeHint(.upFast)
+        case .swipeDown:
+            showSwipeHint(.down)
+        case .swipeCancel:
+            showSwipeHint(.cancel)
+
+        case .doubleTapCmd:
+            showKeyboardHint(.doubleTap)
+        case .holdCmd:
+            showKeyboardHint(.hold)
+        }
+    }
+
+    private func showSwipeHint(_ direction: TitleBarHintView.SwipeDirection) {
+        instructionCenteredConstraint.isActive = false
+        instructionTopConstraint.isActive = true
+        titleBarHint.isHidden = false
+        titleBarHint.configure(direction: direction)
+        titleBarHint.startAnimating()
+    }
+
+    private func showKeyboardHint(_ mode: KeyboardHintView.Mode) {
+        instructionCenteredConstraint.isActive = false
+        instructionTopConstraint.isActive = true
+        keyboardHint.isHidden = false
+        keyboardHint.configure(mode: mode)
+        keyboardHint.startAnimating()
+    }
+
+    private func hideAllHints() {
+        titleBarHint.isHidden = true
+        titleBarHint.stopAnimating()
+        keyboardHint.isHidden = true
+        keyboardHint.stopAnimating()
+        instructionTopConstraint.isActive = false
+        instructionCenteredConstraint.isActive = true
     }
 
     // MARK: - Private
@@ -127,9 +175,13 @@ final class OnboardingWindow: NSWindow {
         titleBarHint.translatesAutoresizingMaskIntoConstraints = false
         titleBarHint.isHidden = true
 
+        keyboardHint.translatesAutoresizingMaskIntoConstraints = false
+        keyboardHint.isHidden = true
+
         effectView.addSubview(instructionLabel)
         effectView.addSubview(doneLabel)
         effectView.addSubview(titleBarHint)
+        effectView.addSubview(keyboardHint)
         effectView.addSubview(stepLabel)
         effectView.addSubview(progressTrack)
         progressTrack.addSubview(progressBar)
@@ -145,6 +197,11 @@ final class OnboardingWindow: NSWindow {
             titleBarHint.topAnchor.constraint(equalTo: instructionLabel.bottomAnchor, constant: 12),
             titleBarHint.widthAnchor.constraint(equalToConstant: 220),
             titleBarHint.heightAnchor.constraint(equalToConstant: 130),
+
+            keyboardHint.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
+            keyboardHint.topAnchor.constraint(equalTo: instructionLabel.bottomAnchor, constant: 12),
+            keyboardHint.widthAnchor.constraint(equalToConstant: 220),
+            keyboardHint.heightAnchor.constraint(equalToConstant: 100),
 
             doneLabel.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
             doneLabel.centerYAnchor.constraint(equalTo: effectView.centerYAnchor, constant: -10),

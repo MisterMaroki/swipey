@@ -1,8 +1,9 @@
 import Foundation
 
-enum SwipeHint: Sendable {
-    case right, left, up, down
-    case upLeft, upRight, downLeft, downRight
+enum StepHint: Sendable {
+    case none
+    case swipeRight, swipeDownLeft, swipeUp, swipeUpFast, swipeDown, swipeCancel
+    case doubleTapCmd, holdCmd
 }
 
 struct OnboardingStep: Sendable {
@@ -12,10 +13,9 @@ struct OnboardingStep: Sendable {
     let acceptsZoomActivated: Bool
     let acceptsZoomHoldReleased: Bool
     let completionMessage: String
+    let hint: StepHint
     /// If set, the step auto-advances after this delay (no user action needed).
     let autoAdvanceDelay: TimeInterval?
-    /// Animated directional hint shown below the instruction.
-    let swipeHint: SwipeHint?
 
     init(
         instruction: String,
@@ -23,8 +23,8 @@ struct OnboardingStep: Sendable {
         acceptsCancellation: Bool = false,
         acceptsZoomActivated: Bool = false,
         acceptsZoomHoldReleased: Bool = false,
+        hint: StepHint = .none,
         autoAdvanceDelay: TimeInterval? = nil,
-        swipeHint: SwipeHint? = nil,
         completionMessage: String
     ) {
         self.instruction = instruction
@@ -32,8 +32,8 @@ struct OnboardingStep: Sendable {
         self.acceptsCancellation = acceptsCancellation
         self.acceptsZoomActivated = acceptsZoomActivated
         self.acceptsZoomHoldReleased = acceptsZoomHoldReleased
+        self.hint = hint
         self.autoAdvanceDelay = autoAdvanceDelay
-        self.swipeHint = swipeHint
         self.completionMessage = completionMessage
     }
 
@@ -46,25 +46,25 @@ struct OnboardingStep: Sendable {
         OnboardingStep(
             instruction: "Two-finger swipe right on the title bar",
             expectedPositions: [.rightHalf],
-            swipeHint: .right,
+            hint: .swipeRight,
             completionMessage: "Nice! You tiled to the right half."
         ),
         OnboardingStep(
             instruction: "Two-finger swipe to the bottom-left quarter",
             expectedPositions: [.bottomLeftQuarter],
-            swipeHint: .downLeft,
+            hint: .swipeDownLeft,
             completionMessage: "Great! You nailed the quarter tile."
         ),
         OnboardingStep(
             instruction: "Two-finger swipe up to maximise",
             expectedPositions: [.maximize],
-            swipeHint: .up,
+            hint: .swipeUp,
             completionMessage: "Maximised! Now try going faster for fullscreen."
         ),
         OnboardingStep(
             instruction: "Two-finger swipe up faster this time for fullscreen",
             expectedPositions: [.fullscreen],
-            swipeHint: .up,
+            hint: .swipeUpFast,
             completionMessage: "Fullscreen! Looking good."
         ),
         OnboardingStep(
@@ -74,22 +74,25 @@ struct OnboardingStep: Sendable {
                 .maximize, .topLeftQuarter, .topRightQuarter,
                 .bottomLeftQuarter, .bottomRightQuarter,
             ],
-            swipeHint: .down,
+            hint: .swipeDown,
             completionMessage: "You're a natural!"
         ),
         OnboardingStep(
             instruction: "Start a swipe, then hold still for 3 seconds to cancel",
             acceptsCancellation: true,
+            hint: .swipeCancel,
             completionMessage: "Cancelled! Now you know how to bail out."
         ),
         OnboardingStep(
             instruction: "Double-tap ⌘ to expand a tiled window",
             acceptsZoomActivated: true,
+            hint: .doubleTapCmd,
             completionMessage: "Zoomed! Double-tap ⌘ again to restore."
         ),
         OnboardingStep(
             instruction: "Double-tap and hold ⌘ to expand, then release to snap back",
             acceptsZoomHoldReleased: true,
+            hint: .holdCmd,
             completionMessage: "Perfect! You've mastered zoom."
         ),
     ]
