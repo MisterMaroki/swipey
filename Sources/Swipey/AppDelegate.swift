@@ -19,6 +19,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var zoomToggleMonitor: ZoomToggleMonitor!
     private var zoomManager: ZoomManager!
     private var gridResizeManager: GridResizeManager!
+    private var keyboardTileMonitor: KeyboardTileMonitor!
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.accessory)
@@ -49,6 +50,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         gridResizeManager = GridResizeManager()
         gridResizeManager.start()
+
+        keyboardTileMonitor = KeyboardTileMonitor(windowManager: windowManager)
+        keyboardTileMonitor.onWindowTiled = { [weak self] window in
+            self?.zoomManager.clearZoomState(for: window)
+        }
+        keyboardTileMonitor.start()
 
         gestureMonitor.onTileAction = { [weak self] position in
             MainActor.assumeIsolated {
@@ -89,6 +96,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
                 if self.accessibilityManager.isTrusted && !self.gridResizeManager.isRunning {
                     self.gridResizeManager.start()
+                }
+
+                if self.accessibilityManager.isTrusted && !self.keyboardTileMonitor.isRunning {
+                    self.keyboardTileMonitor.start()
                 }
 
                 // First-launch onboarding: show once accessibility is granted
