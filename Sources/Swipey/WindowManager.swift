@@ -257,4 +257,46 @@ final class WindowManager: @unchecked Sendable {
         guard let value = AXValueCreate(.cgSize, &mutableSize) else { return }
         AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, value)
     }
+
+    // MARK: - Tile position detection
+
+    /// Try to match the window's current frame to a known tile position.
+    /// Returns nil if the window doesn't match any tile position (untiled).
+    func detectTilePosition(of window: AXUIElement, on screen: NSScreen) -> TilePosition? {
+        guard let cgPos = getPosition(of: window),
+              let cgSize = getSize(of: window) else { return nil }
+
+        guard let mainScreen = NSScreen.screens.first else { return nil }
+        let nsOrigin = CGPoint(x: cgPos.x, y: mainScreen.frame.height - cgPos.y - cgSize.height)
+        let windowFrame = CGRect(origin: nsOrigin, size: cgSize)
+
+        let candidates: [TilePosition] = [
+            .topLeftQuarter, .topRightQuarter, .bottomLeftQuarter, .bottomRightQuarter,
+            .leftHalf, .rightHalf, .topHalf, .bottomHalf,
+            .maximize,
+        ]
+
+        for position in candidates {
+            let tileFrame = position.frame(for: screen)
+            if framesMatch(windowFrame, tileFrame, tolerance: 10) {
+                return position
+            }
+        }
+
+        return nil
+    }
+
+    /// Check if window is in native fullscreen via AXFullScreen attribute.
+    func isFullscreen(_ window: AXUIElement) -> Bool {
+        var value: AnyObject?
+        let err = AXUIElementCopyAttributeValue(window, "AXFullScreen" as CFString, &value)
+        return err == .success && (value as? Bool) == true
+    }
+
+    private func framesMatch(_ a: CGRect, _ b: CGRect, tolerance: CGFloat) -> Bool {
+        return abs(a.origin.x - b.origin.x) <= tolerance
+            && abs(a.origin.y - b.origin.y) <= tolerance
+            && abs(a.width - b.width) <= tolerance
+            && abs(a.height - b.height) <= tolerance
+    }
 }

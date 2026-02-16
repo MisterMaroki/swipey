@@ -108,35 +108,7 @@ final class ZoomManager: @unchecked Sendable {
         logger.info("[Swipey] Collapsed window back to \(String(describing: state.position))")
     }
 
-    /// Try to match the window's current frame to a known tile position.
     private func detectTilePosition(of window: AXUIElement, on screen: NSScreen) -> TilePosition? {
-        guard let cgPos = windowManager.getWindowPosition(window),
-              let cgSize = windowManager.getWindowSize(window) else { return nil }
-
-        // Convert CG position (top-left origin) to NS position (bottom-left origin)
-        guard let mainScreen = NSScreen.screens.first else { return nil }
-        let nsOrigin = CGPoint(x: cgPos.x, y: mainScreen.frame.height - cgPos.y - cgSize.height)
-        let windowFrame = CGRect(origin: nsOrigin, size: cgSize)
-
-        let candidates: [TilePosition] = [
-            .topLeftQuarter, .topRightQuarter, .bottomLeftQuarter, .bottomRightQuarter,
-            .leftHalf, .rightHalf, .topHalf, .bottomHalf,
-        ]
-
-        for position in candidates {
-            let tileFrame = position.frame(for: screen)
-            if framesMatch(windowFrame, tileFrame, tolerance: 10) {
-                return position
-            }
-        }
-
-        return nil
-    }
-
-    private func framesMatch(_ a: CGRect, _ b: CGRect, tolerance: CGFloat) -> Bool {
-        return abs(a.origin.x - b.origin.x) <= tolerance
-            && abs(a.origin.y - b.origin.y) <= tolerance
-            && abs(a.width - b.width) <= tolerance
-            && abs(a.height - b.height) <= tolerance
+        return windowManager.detectTilePosition(of: window, on: screen)
     }
 }
