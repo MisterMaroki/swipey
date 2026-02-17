@@ -22,6 +22,9 @@ final class KeyboardTileMonitor: @unchecked Sendable {
     /// Called after a window is tiled via keyboard shortcut.
     var onWindowTiled: ((AXUIElement) -> Void)?
 
+    /// Called with the tile position when a keyboard tile is performed.
+    var onTileAction: ((TilePosition) -> Void)?
+
     init(windowManager: WindowManager) {
         self.windowManager = windowManager
     }
@@ -139,6 +142,7 @@ final class KeyboardTileMonitor: @unchecked Sendable {
         }
 
         onWindowTiled?(window)
+        onTileAction?(targetPosition)
 
         logger.info("[Swipey] Keyboard tile: \(String(describing: currentPosition)) → \(String(describing: targetPosition))")
 

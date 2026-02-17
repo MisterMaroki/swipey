@@ -51,7 +51,7 @@ struct OnboardingStep: Sendable {
             completionMessage: "Let's go!"
         ),
         OnboardingStep(
-            instruction: "Slowly take two fingers and swipe right on the title bar",
+            instruction: "Swipe right on the title bar\nor press ⌃⌥→",
             expectedPositions: [.rightHalf],
             hint: .titleBarDiagram,
             trackpadGesture: .swipeRight,
@@ -65,28 +65,28 @@ struct OnboardingStep: Sendable {
             completionMessage: "Cancelled! Now you know how to bail out."
         ),
         OnboardingStep(
-            instruction: "Two-finger swipe to the bottom-left quarter",
+            instruction: "Swipe to the bottom-left quarter\nor press ⌃⌥← then ⌃⌥↓",
             expectedPositions: [.bottomLeftQuarter],
             hint: .indicator(.bottomLeftQuarter),
             trackpadGesture: .swipeDownLeft,
             completionMessage: "Great! You nailed the quarter tile."
         ),
         OnboardingStep(
-            instruction: "Two-finger swipe up to maximise",
+            instruction: "Swipe up to maximise\nor press ⌃⌥↑",
             expectedPositions: [.maximize],
             hint: .indicator(.maximize),
             trackpadGesture: .swipeUp,
             completionMessage: "Maximised! Now try going faster for fullscreen."
         ),
         OnboardingStep(
-            instruction: "Two-finger swipe up faster this time for fullscreen",
+            instruction: "Swipe up faster for fullscreen\nor press ⌃⌥↑ again",
             expectedPositions: [.fullscreen],
             hint: .indicator(.fullscreen),
             trackpadGesture: .swipeUpFast,
             completionMessage: "Fullscreen! Looking good."
         ),
         OnboardingStep(
-            instruction: "Two-finger swipe down to restore",
+            instruction: "Swipe down to restore\nor press ⌃⌥↓",
             expectedPositions: [
                 .restore, .leftHalf, .rightHalf, .topHalf, .bottomHalf,
                 .maximize, .topLeftQuarter, .topRightQuarter,
@@ -97,7 +97,7 @@ struct OnboardingStep: Sendable {
             completionMessage: "You're a natural!"
         ),
         OnboardingStep(
-            instruction: "Tile this window to the bottom-right quarter",
+            instruction: "Tile to the bottom-right quarter\nor press ⌃⌥→ then ⌃⌥↓",
             expectedPositions: [.bottomRightQuarter],
             hint: .indicator(.bottomRightQuarter),
             trackpadGesture: .swipeDownRight,

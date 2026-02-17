@@ -55,6 +55,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         keyboardTileMonitor.onWindowTiled = { [weak self] window in
             self?.zoomManager.clearZoomState(for: window)
         }
+        keyboardTileMonitor.onTileAction = { [weak self] position in
+            MainActor.assumeIsolated {
+                self?.onboardingController?.handleTileAction(position)
+            }
+        }
         keyboardTileMonitor.start()
 
         gestureMonitor.onTileAction = { [weak self] position in
