@@ -7,8 +7,10 @@ private let logger = Logger(subsystem: "com.swipey.app", category: "onboarding")
 final class OnboardingController: NSObject {
     private var window: OnboardingWindow?
     private var currentStepIndex = 0
-    private let steps = OnboardingStep.steps
+    private var steps: [OnboardingStep] = []
+    private var triggerKey: ZoomTriggerKey = .cmd
     var onComplete: (() -> Void)?
+    var onTriggerKeyChanged: ((ZoomTriggerKey) -> Void)?
 
     private func playSuccess() { NSSound(named: "Glass")?.play() }
     private func playNotQuite() { NSSound(named: "Funk")?.play() }
@@ -22,13 +24,18 @@ final class OnboardingController: NSObject {
         }
     }
 
-    func start() {
+    func start(triggerKey: ZoomTriggerKey = .current) {
+        self.triggerKey = triggerKey
+        self.steps = OnboardingStep.steps(for: triggerKey)
         currentStepIndex = 0
 
         let win = OnboardingWindow()
         self.window = win
 
         win.delegate = self
+        win.onSiriConflictChoice = { [weak self] choice in
+            self?.handleSiriConflictChoice(choice)
+        }
         win.showStep(index: 0, total: steps.count, instruction: steps[0].instruction,
                      hint: steps[0].hint, trackpadGesture: steps[0].trackpadGesture)
 
@@ -55,7 +62,9 @@ final class OnboardingController: NSObject {
     func handleGestureCancelled() {
         guard let window, window.isVisible else { return }
         guard currentStepIndex < steps.count else { return }
-        guard steps[currentStepIndex].acceptsCancellation else { return }
+        let step = steps[currentStepIndex]
+        guard !step.isChoiceStep else { return }
+        guard step.acceptsCancellation else { return }
         advanceStep()
     }
 
@@ -63,6 +72,7 @@ final class OnboardingController: NSObject {
         guard let window, window.isVisible else { return }
         guard currentStepIndex < steps.count else { return }
         let step = steps[currentStepIndex]
+        guard !step.isChoiceStep else { return }
         if step.expectedPositions.contains(position) {
             advanceStep()
         } else if !step.expectedPositions.isEmpty {
@@ -74,6 +84,7 @@ final class OnboardingController: NSObject {
         guard let window, window.isVisible else { return }
         guard currentStepIndex < steps.count else { return }
         let step = steps[currentStepIndex]
+        guard !step.isChoiceStep else { return }
         if step.acceptsZoomActivated {
             advanceStep()
         } else if step.acceptsZoomHoldReleased {
@@ -85,6 +96,7 @@ final class OnboardingController: NSObject {
         guard let window, window.isVisible else { return }
         guard currentStepIndex < steps.count else { return }
         let step = steps[currentStepIndex]
+        guard !step.isChoiceStep else { return }
         if step.acceptsZoomHoldReleased {
             advanceStep()
         } else if step.acceptsZoomActivated {
@@ -92,27 +104,59 @@ final class OnboardingController: NSObject {
         }
     }
 
+    private func handleSiriConflictChoice(_ choice: SiriConflictChoice) {
+        guard currentStepIndex < steps.count, steps[currentStepIndex].isChoiceStep else { return }
+
+        switch choice {
+        case .noConflict:
+            advanceStep()
+
+        case .disableSiri:
+            if let url = URL(string: "x-apple.systempreferences:com.apple.Siri-Settings.extension") {
+                NSWorkspace.shared.open(url)
+            }
+            // Stay on step so user can pick another option after adjusting settings
+
+        case .switchToControl:
+            switchTriggerKey(to: .control)
+
+        case .switchToOption:
+            switchTriggerKey(to: .option)
+        }
+    }
+
+    private func switchTriggerKey(to newKey: ZoomTriggerKey) {
+        ZoomTriggerKey.current = newKey
+        triggerKey = newKey
+        onTriggerKeyChanged?(newKey)
+
+        // Rebuild steps with new key and advance past the choice step
+        let oldIndex = currentStepIndex
+        steps = OnboardingStep.steps(for: newKey)
+        // The choice step no longer exists in the new steps, so oldIndex now
+        // points at the hold step. Show it directly.
+        currentStepIndex = min(oldIndex, steps.count - 1)
+        showCurrentStep()
+    }
+
     private func advanceStep() {
         guard let window else { return }
-        playSuccess()
+        let isChoice = steps[currentStepIndex].isChoiceStep
 
-        let message = steps[currentStepIndex].completionMessage
-        window.showCompletion(message: message, index: currentStepIndex, total: steps.count)
+        if !isChoice {
+            playSuccess()
+            let message = steps[currentStepIndex].completionMessage
+            window.showCompletion(message: message, index: currentStepIndex, total: steps.count)
+        }
         logger.warning("[Swipey] Onboarding step \(self.currentStepIndex + 1) completed")
 
         currentStepIndex += 1
 
         if currentStepIndex < steps.count {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            let delay: TimeInterval = isChoice ? 0.0 : 1.2
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                 guard let self, let window = self.window, window.isVisible else { return }
-                window.showStep(
-                    index: self.currentStepIndex,
-                    total: self.steps.count,
-                    instruction: self.steps[self.currentStepIndex].instruction,
-                    hint: self.steps[self.currentStepIndex].hint,
-                    trackpadGesture: self.steps[self.currentStepIndex].trackpadGesture
-                )
-                self.scheduleAutoAdvanceIfNeeded()
+                self.showCurrentStep()
             }
         } else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
@@ -126,6 +170,18 @@ final class OnboardingController: NSObject {
                 }
             }
         }
+    }
+
+    private func showCurrentStep() {
+        guard let window, currentStepIndex < steps.count else { return }
+        window.showStep(
+            index: currentStepIndex,
+            total: steps.count,
+            instruction: steps[currentStepIndex].instruction,
+            hint: steps[currentStepIndex].hint,
+            trackpadGesture: steps[currentStepIndex].trackpadGesture
+        )
+        scheduleAutoAdvanceIfNeeded()
     }
 
     private func close() {

@@ -20,6 +20,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var zoomManager: ZoomManager!
     private var gridResizeManager: GridResizeManager!
     private var keyboardTileMonitor: KeyboardTileMonitor!
+    private var settingsWindow: SettingsWindow?
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.accessory)
@@ -34,6 +35,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         zoomManager = ZoomManager(windowManager: windowManager)
         zoomToggleMonitor = ZoomToggleMonitor()
+        zoomToggleMonitor.reconfigure(triggerKey: .current)
         zoomToggleMonitor.onActivated = { [weak self] in
             self?.zoomManager.toggleFocusedWindow()
             MainActor.assumeIsolated {
@@ -76,6 +78,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
         gestureMonitor.onWindowTiled = { [weak self] window in
             self?.zoomManager.clearZoomState(for: window)
+        }
+
+        statusBarController.onShowSettings = { [weak self] in
+            self?.showSettings()
         }
 
         statusBarController.onShowTutorial = { [weak self] in
@@ -129,6 +135,24 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.onComplete = { [weak self] in
             self?.onboardingController = nil
         }
-        controller.start()
+        controller.onTriggerKeyChanged = { [weak self] key in
+            self?.zoomToggleMonitor.reconfigure(triggerKey: key)
+        }
+        controller.start(triggerKey: .current)
+    }
+
+    private func showSettings() {
+        if let existing = settingsWindow {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        let win = SettingsWindow()
+        win.onTriggerKeyChanged = { [weak self] key in
+            self?.zoomToggleMonitor.reconfigure(triggerKey: key)
+        }
+        self.settingsWindow = win
+        NSApp.activate(ignoringOtherApps: true)
+        win.makeKeyAndOrderFront(nil)
     }
 }

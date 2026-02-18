@@ -6,6 +6,7 @@ final class StatusBarController {
     private let accessibilityMenuItem: NSMenuItem
     private let accessibilityManager: AccessibilityManager
     var onShowTutorial: (() -> Void)?
+    var onShowSettings: (() -> Void)?
 
     init(accessibilityManager: AccessibilityManager) {
         self.accessibilityManager = accessibilityManager
@@ -38,6 +39,11 @@ final class StatusBarController {
         let aboutItem = NSMenuItem(title: "About Swipey", action: #selector(showAbout), keyEquivalent: "")
         aboutItem.target = self
         menu.addItem(aboutItem)
+
+        // Settings
+        let settingsItem = NSMenuItem(title: "Settings\u{2026}", action: #selector(showSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
 
         // Tutorial
         let tutorialItem = NSMenuItem(title: "Show Tutorial", action: #selector(showTutorial), keyEquivalent: "")
@@ -73,6 +79,10 @@ final class StatusBarController {
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.runModal()
+    }
+
+    @objc private func showSettings() {
+        onShowSettings?()
     }
 
     @objc private func showTutorial() {

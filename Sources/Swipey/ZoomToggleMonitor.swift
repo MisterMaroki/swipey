@@ -4,15 +4,11 @@ import os
 
 private let logger = Logger(subsystem: "com.swipey.app", category: "zoom-toggle")
 
-/// Left Cmd keycode
-private let kLeftCmdKeycode: Int64 = 0x37
-/// Right Cmd keycode
-private let kRightCmdKeycode: Int64 = 0x36
-
 final class ZoomToggleMonitor: @unchecked Sendable {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var stateMachine = ZoomToggleStateMachine()
+    private var triggerKey: ZoomTriggerKey = .cmd
 
     /// Called when double-Cmd is detected (expand/toggle).
     var onActivated: (() -> Void)?
@@ -57,6 +53,11 @@ final class ZoomToggleMonitor: @unchecked Sendable {
         logger.info("[Swipey] Zoom toggle monitor started")
     }
 
+    func reconfigure(triggerKey: ZoomTriggerKey) {
+        self.triggerKey = triggerKey
+        stateMachine = ZoomToggleStateMachine()
+    }
+
     var isRunning: Bool {
         guard let tap = eventTap else { return false }
         return CGEvent.tapIsEnabled(tap: tap)
@@ -97,10 +98,10 @@ final class ZoomToggleMonitor: @unchecked Sendable {
 
         let input: ZoomToggleStateMachine.Input
         switch keycode {
-        case kLeftCmdKeycode:
-            input = flags.contains(.maskCommand) ? .cmdDown(.left) : .cmdUp(.left)
-        case kRightCmdKeycode:
-            input = flags.contains(.maskCommand) ? .cmdDown(.right) : .cmdUp(.right)
+        case triggerKey.leftKeycode:
+            input = flags.contains(triggerKey.flagMask) ? .cmdDown(.left) : .cmdUp(.left)
+        case triggerKey.rightKeycode:
+            input = flags.contains(triggerKey.flagMask) ? .cmdDown(.right) : .cmdUp(.right)
         default:
             return
         }

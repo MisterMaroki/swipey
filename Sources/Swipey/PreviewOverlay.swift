@@ -81,7 +81,7 @@ final class PreviewOverlay {
         effect.blendingMode = .behindWindow
         effect.state = .active
         effect.wantsLayer = true
-        effect.layer?.cornerRadius = 0
+        effect.layer?.cornerRadius = 10
         effect.layer?.masksToBounds = true
         effect.layer?.borderWidth = 1
         effect.layer?.borderColor = NSColor.white.withAlphaComponent(0.2).cgColor

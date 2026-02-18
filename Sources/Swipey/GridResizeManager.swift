@@ -179,7 +179,7 @@ final class GridResizeManager: @unchecked Sendable {
     // MARK: - Polling
 
     private func startPolling() {
-        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global(qos: .userInteractive))
+        let timer = DispatchSource.makeTimerSource(queue: .main)
         timer.schedule(deadline: .now(), repeating: .milliseconds(16))  // ~60Hz
         timer.setEventHandler { [weak self] in
             self?.pollWindowFrames()

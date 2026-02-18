@@ -19,8 +19,10 @@ final class OnboardingWindow: NSWindow {
     private let welcomeTitle = NSTextField(labelWithString: "")
     private let welcomeSubtitle = NSTextField(labelWithString: "")
 
-    private var instructionCenteredConstraint: NSLayoutConstraint!
-    private var instructionTopConstraint: NSLayoutConstraint!
+    private let choiceContainer = NSStackView()
+    private let contentStack = NSStackView()
+
+    var onSiriConflictChoice: ((SiriConflictChoice) -> Void)?
 
     init() {
         instructionLabel = NSTextField(labelWithString: "")
@@ -49,7 +51,7 @@ final class OnboardingWindow: NSWindow {
 
     func showStep(index: Int, total: Int, instruction: String,
                   hint: StepHint, trackpadGesture: TrackpadHintView.Gesture?) {
-        instructionLabel.stringValue = instruction
+        instructionLabel.attributedStringValue = styledText(instruction, font: instructionLabel.font!)
         doneLabel.isHidden = true
         instructionLabel.isHidden = false
         stepLabel.stringValue = "Step \(index + 1) of \(total)"
@@ -61,7 +63,7 @@ final class OnboardingWindow: NSWindow {
     }
 
     func showCompletion(message: String, index: Int, total: Int) {
-        doneLabel.stringValue = message
+        doneLabel.attributedStringValue = styledText(message, font: doneLabel.font!)
         doneLabel.isHidden = false
         instructionLabel.isHidden = true
         hideAllHints()
@@ -69,7 +71,7 @@ final class OnboardingWindow: NSWindow {
     }
 
     func showFinal() {
-        instructionLabel.stringValue = "You are now a screen real estate tycoon!"
+        instructionLabel.attributedStringValue = styledText("You are now a screen real estate tycoon!", font: instructionLabel.font!)
         instructionLabel.isHidden = false
         doneLabel.isHidden = true
         stepLabel.isHidden = true
@@ -98,10 +100,6 @@ final class OnboardingWindow: NSWindow {
 
         if case .none = hint { return }
 
-        // Move instruction label to top for hint area
-        instructionCenteredConstraint.isActive = false
-        instructionTopConstraint.isActive = true
-
         // Add trackpad to the stack if gesture provided
         if let gesture = trackpadGesture {
             trackpadHint.configure(gesture: gesture)
@@ -128,18 +126,29 @@ final class OnboardingWindow: NSWindow {
             hintStack.addArrangedSubview(indicatorHint)
             indicatorHint.startAnimating()
 
-        case .doubleTapCmd:
-            indicatorHint.configureKeyboard(mode: .doubleTap)
+        case .doubleTapKey(let key):
+            indicatorHint.configureKeyboard(mode: .doubleTap, triggerKey: key)
             hintStack.addArrangedSubview(indicatorHint)
             indicatorHint.startAnimating()
 
-        case .holdCmd:
-            indicatorHint.configureKeyboard(mode: .hold)
+        case .holdKey(let key):
+            indicatorHint.configureKeyboard(mode: .hold, triggerKey: key)
             hintStack.addArrangedSubview(indicatorHint)
             indicatorHint.startAnimating()
+
+        case .siriConflict:
+            hintStack.isHidden = true
+            choiceContainer.isHidden = false
+            return
         }
 
         hintStack.isHidden = hintStack.arrangedSubviews.isEmpty
+    }
+
+    @objc private func siriChoiceTapped(_ sender: NSButton) {
+        let choices: [SiriConflictChoice] = [.noConflict, .disableSiri, .switchToControl, .switchToOption]
+        guard sender.tag >= 0, sender.tag < choices.count else { return }
+        onSiriConflictChoice?(choices[sender.tag])
     }
 
     private func hideAllHints() {
@@ -147,12 +156,113 @@ final class OnboardingWindow: NSWindow {
         titleBarHint.stopAnimating()
         indicatorHint.stopAnimating()
         welcomeContainer.isHidden = true
+        choiceContainer.isHidden = true
 
         hintStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         hintStack.isHidden = true
+    }
 
-        instructionTopConstraint.isActive = false
-        instructionCenteredConstraint.isActive = true
+    // MARK: - Keycap text rendering
+
+    private static let keycapSymbols: Set<Character> = [
+        "\u{2318}", // ⌘ Command
+        "\u{2303}", // ⌃ Control
+        "\u{2325}", // ⌥ Option
+        "\u{2192}", // → Right
+        "\u{2190}", // ← Left
+        "\u{2191}", // ↑ Up
+        "\u{2193}", // ↓ Down
+    ]
+
+    private func styledText(_ text: String, font: NSFont) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        let baseAttrs: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: NSColor.labelColor,
+        ]
+
+        let keycapHeight = round(font.pointSize * 1.25)
+        var buffer = ""
+
+        for char in text {
+            if Self.keycapSymbols.contains(char) {
+                if !buffer.isEmpty {
+                    result.append(NSAttributedString(string: buffer, attributes: baseAttrs))
+                    buffer = ""
+                }
+                let attachment = NSTextAttachment()
+                attachment.image = Self.renderKeycap(symbol: String(char), height: keycapHeight)
+                let imgWidth = attachment.image!.size.width
+                let imgHeight = attachment.image!.size.height
+                attachment.bounds = CGRect(x: 0, y: font.descender, width: imgWidth, height: imgHeight)
+                result.append(NSAttributedString(attachment: attachment))
+            } else {
+                buffer.append(char)
+            }
+        }
+        if !buffer.isEmpty {
+            result.append(NSAttributedString(string: buffer, attributes: baseAttrs))
+        }
+
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = .center
+        result.addAttribute(.paragraphStyle, value: paragraphStyle,
+                            range: NSRange(location: 0, length: result.length))
+        return result
+    }
+
+    nonisolated private static func renderKeycap(symbol: String, height: CGFloat) -> NSImage {
+        let font = NSFont.systemFont(ofSize: height * 0.52, weight: .medium)
+        let str = symbol as NSString
+        let textSize = str.size(withAttributes: [.font: font])
+        let width = max(height, textSize.width + height * 0.4)
+        let shadowPad: CGFloat = 3
+        let imgSize = NSSize(width: width + 2, height: height + shadowPad)
+
+        return NSImage(size: imgSize, flipped: false) { rect in
+            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
+
+            let keyRect = CGRect(x: 1, y: shadowPad, width: width, height: height - 1)
+            let cr: CGFloat = 5
+            let keyPath = CGPath(roundedRect: keyRect, cornerWidth: cr,
+                                 cornerHeight: cr, transform: nil)
+
+            // Shadow
+            ctx.saveGState()
+            ctx.setShadow(offset: CGSize(width: 0, height: -1.5), blur: 2,
+                           color: NSColor.black.withAlphaComponent(0.25).cgColor)
+            ctx.setFillColor(NSColor.windowBackgroundColor.cgColor)
+            ctx.addPath(keyPath)
+            ctx.fillPath()
+            ctx.restoreGState()
+
+            // Key face
+            ctx.setFillColor(NSColor.windowBackgroundColor.withAlphaComponent(0.95).cgColor)
+            ctx.addPath(keyPath)
+            ctx.fillPath()
+
+            // Border
+            ctx.setStrokeColor(NSColor.tertiaryLabelColor.withAlphaComponent(0.5).cgColor)
+            ctx.setLineWidth(0.5)
+            ctx.addPath(keyPath)
+            ctx.strokePath()
+
+            // Symbol
+            let drawAttrs: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .foregroundColor: NSColor.secondaryLabelColor,
+            ]
+            let drawSize = str.size(withAttributes: drawAttrs)
+            let drawRect = CGRect(
+                x: keyRect.midX - drawSize.width / 2,
+                y: keyRect.midY - drawSize.height / 2,
+                width: drawSize.width,
+                height: drawSize.height
+            )
+            str.draw(in: drawRect, withAttributes: drawAttrs)
+
+            return true
+        }
     }
 
     // MARK: - Private
@@ -250,9 +360,53 @@ final class OnboardingWindow: NSWindow {
         welcomeContainer.addSubview(welcomeTitle)
         welcomeContainer.addSubview(welcomeSubtitle)
 
-        effectView.addSubview(instructionLabel)
+        // Choice container for siri conflict step
+        choiceContainer.orientation = .vertical
+        choiceContainer.spacing = 6
+        choiceContainer.alignment = .centerX
+        choiceContainer.translatesAutoresizingMaskIntoConstraints = false
+        choiceContainer.isHidden = true
+
+        let choices: [(title: String, desc: String?, choice: SiriConflictChoice)] = [
+            ("No, it worked fine", nil, .noConflict),
+            ("Open Siri Settings",
+             "Turn off or change the Siri shortcut, then try again", .disableSiri),
+            ("Use \u{2303} Control instead",
+             "Swipey will use double-tap Control for zoom", .switchToControl),
+            ("Use \u{2325} Option instead",
+             "Swipey will use double-tap Option for zoom", .switchToOption),
+        ]
+        for (index, (title, desc, _)) in choices.enumerated() {
+            let button = NSButton(title: title, target: self, action: #selector(siriChoiceTapped(_:)))
+            button.bezelStyle = .rounded
+            button.controlSize = .large
+            button.tag = index
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 260).isActive = true
+            choiceContainer.addArrangedSubview(button)
+
+            if let desc {
+                let label = NSTextField(labelWithString: desc)
+                label.font = .systemFont(ofSize: 11)
+                label.textColor = .tertiaryLabelColor
+                label.alignment = .center
+                choiceContainer.addArrangedSubview(label)
+                choiceContainer.setCustomSpacing(1, after: button)
+                choiceContainer.setCustomSpacing(10, after: label)
+            }
+        }
+
+        // Content stack: groups instruction + hints/choices, always centered
+        contentStack.orientation = .vertical
+        contentStack.spacing = 14
+        contentStack.alignment = .centerX
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+
+        contentStack.addArrangedSubview(instructionLabel)
+        contentStack.addArrangedSubview(hintStack)
+        contentStack.addArrangedSubview(choiceContainer)
+
+        effectView.addSubview(contentStack)
         effectView.addSubview(doneLabel)
-        effectView.addSubview(hintStack)
         effectView.addSubview(welcomeContainer)
         effectView.addSubview(stepLabel)
         effectView.addSubview(progressTrack)
@@ -262,11 +416,11 @@ final class OnboardingWindow: NSWindow {
         self.progressWidthConstraint = progressWidth
 
         NSLayoutConstraint.activate([
-            instructionLabel.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
-            instructionLabel.widthAnchor.constraint(lessThanOrEqualTo: effectView.widthAnchor, constant: -60),
+            contentStack.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
+            contentStack.centerYAnchor.constraint(equalTo: effectView.centerYAnchor, constant: -20),
+            contentStack.widthAnchor.constraint(lessThanOrEqualTo: effectView.widthAnchor, constant: -40),
 
-            hintStack.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
-            hintStack.topAnchor.constraint(equalTo: instructionLabel.bottomAnchor, constant: 12),
+            instructionLabel.widthAnchor.constraint(lessThanOrEqualTo: effectView.widthAnchor, constant: -60),
 
             welcomeContainer.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
             welcomeContainer.centerYAnchor.constraint(equalTo: effectView.centerYAnchor, constant: -10),
@@ -303,12 +457,5 @@ final class OnboardingWindow: NSWindow {
             progressBar.bottomAnchor.constraint(equalTo: progressTrack.bottomAnchor),
             progressWidth,
         ])
-
-        // Switchable vertical position for instruction label
-        instructionCenteredConstraint = instructionLabel.centerYAnchor.constraint(
-            equalTo: effectView.centerYAnchor, constant: -10)
-        instructionTopConstraint = instructionLabel.topAnchor.constraint(
-            equalTo: effectView.topAnchor, constant: 40)
-        instructionCenteredConstraint.isActive = true
     }
 }

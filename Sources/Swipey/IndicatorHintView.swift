@@ -35,13 +35,13 @@ final class IndicatorHintView: NSView {
         captionLabel.stringValue = "Look for this icon near your cursor"
     }
 
-    func configureKeyboard(mode: KeyboardMode) {
-        iconLayer.contents = Self.renderKeyboardIcon(mode: mode, size: iconSize)
+    func configureKeyboard(mode: KeyboardMode, triggerKey: ZoomTriggerKey = .cmd) {
+        iconLayer.contents = Self.renderKeyboardIcon(mode: mode, symbol: triggerKey.symbol, size: iconSize)
         switch mode {
         case .doubleTap:
-            captionLabel.stringValue = "Double-tap either \u{2318} key"
+            captionLabel.stringValue = "Double-tap either \(triggerKey.symbol) key"
         case .hold:
-            captionLabel.stringValue = "Double-tap \u{2318}, keep holding"
+            captionLabel.stringValue = "Double-tap \(triggerKey.symbol), keep holding"
         }
     }
 
@@ -182,7 +182,7 @@ final class IndicatorHintView: NSView {
         }
     }
 
-    nonisolated private static func renderKeyboardIcon(mode: KeyboardMode, size: CGFloat) -> NSImage {
+    nonisolated private static func renderKeyboardIcon(mode: KeyboardMode, symbol: String = "\u{2318}", size: CGFloat) -> NSImage {
         let imgSize = NSSize(width: size, height: size)
         return NSImage(size: imgSize, flipped: false) { rect in
             guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
@@ -221,7 +221,7 @@ final class IndicatorHintView: NSView {
                 .foregroundColor: accent,
                 .paragraphStyle: paragraphStyle,
             ]
-            let str = "\u{2318}" as NSString
+            let str = symbol as NSString
             let strSize = str.size(withAttributes: attrs)
             let strRect = CGRect(
                 x: rect.midX - strSize.width / 2,

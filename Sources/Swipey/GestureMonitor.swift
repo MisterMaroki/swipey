@@ -149,8 +149,16 @@ final class GestureMonitor: @unchecked Sendable {
         let isContinuous = event.getIntegerValueField(.scrollWheelEventIsContinuous)
         let phase = event.getIntegerValueField(.scrollWheelEventScrollPhase)
         let momentumPhase = event.getIntegerValueField(.scrollWheelEventMomentumPhase)
-        let deltaX = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis2)
-        let deltaY = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis1)
+        var deltaX = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis2)
+        var deltaY = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis1)
+
+        // Non-natural (inverse) scrolling flips deltas. Negate so physical
+        // gesture direction always drives tiling (swipe-up → maximize, etc.).
+        let naturalScrolling = UserDefaults.standard.object(forKey: "com.apple.swipescrolldirection") as? Bool ?? true
+        if !naturalScrolling {
+            deltaX = -deltaX
+            deltaY = -deltaY
+        }
 
         // Skip momentum/inertia events
         guard momentumPhase == 0 else {
