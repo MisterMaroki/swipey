@@ -1,4 +1,5 @@
 import AppKit
+import ServiceManagement
 
 @MainActor
 final class StatusBarController {
@@ -6,6 +7,7 @@ final class StatusBarController {
     private let accessibilityMenuItem: NSMenuItem
     private let accessibilityManager: AccessibilityManager
     private let updateController: UpdateController
+    private var launchAtLoginItem: NSMenuItem!
     var onShowTutorial: (() -> Void)?
     var onShowSettings: (() -> Void)?
 
@@ -57,6 +59,12 @@ final class StatusBarController {
         updateItem.target = self
         menu.addItem(updateItem)
 
+        // Launch at Login
+        launchAtLoginItem = NSMenuItem(title: "Open at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
+        launchAtLoginItem.target = self
+        launchAtLoginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        menu.addItem(launchAtLoginItem)
+
         menu.addItem(.separator())
 
         // Quit
@@ -98,6 +106,23 @@ final class StatusBarController {
 
     @objc private func checkForUpdates() {
         updateController.checkForUpdates()
+    }
+
+    @objc private func toggleLaunchAtLogin() {
+        do {
+            if SMAppService.mainApp.status == .enabled {
+                try SMAppService.mainApp.unregister()
+                launchAtLoginItem.state = .off
+            } else {
+                try SMAppService.mainApp.register()
+                launchAtLoginItem.state = .on
+            }
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Could not change login item"
+            alert.informativeText = error.localizedDescription
+            alert.runModal()
+        }
     }
 
     @objc private func quit() {
