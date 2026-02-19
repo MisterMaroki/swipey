@@ -270,14 +270,34 @@ mkdir -p site
 rm -f site/Swipey-v*.dmg
 mv "${DMG_NAME}" site/
 
-# --- Generate/update appcast ---
-GENERATE_APPCAST=$(find .build/artifacts -name "generate_appcast" -type f | head -1)
-if [ -n "$GENERATE_APPCAST" ]; then
-    echo "Generating appcast..."
-    "$GENERATE_APPCAST" site/
+# --- Generate appcast with EdDSA signature ---
+SIGN_UPDATE=$(find .build/artifacts -name "sign_update" -type f | head -1)
+if [ -n "$SIGN_UPDATE" ]; then
+    echo "Signing update and generating appcast..."
+    SIGN_OUTPUT=$("$SIGN_UPDATE" "site/${DMG_NAME}")
+    ED_SIGNATURE=$(echo "$SIGN_OUTPUT" | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')
+    DMG_LENGTH=$(stat -f%z "site/${DMG_NAME}")
+    PUB_DATE=$(date -u "+%a, %d %b %Y %H:%M:%S +0000")
+
+    cat > site/appcast.xml << APPCAST
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>${APP_NAME}</title>
+        <item>
+            <title>${VERSION}</title>
+            <pubDate>${PUB_DATE}</pubDate>
+            <sparkle:version>${VERSION}</sparkle:version>
+            <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://swipey-alpha.vercel.app/${DMG_NAME}" sparkle:edSignature="${ED_SIGNATURE}" length="${DMG_LENGTH}" type="application/octet-stream"/>
+        </item>
+    </channel>
+</rss>
+APPCAST
     echo "Appcast updated at site/appcast.xml"
 else
-    echo "WARNING: generate_appcast not found in .build/artifacts"
+    echo "WARNING: sign_update not found in .build/artifacts"
     echo "  Appcast will need to be generated manually."
 fi
 

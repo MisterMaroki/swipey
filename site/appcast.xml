@@ -8,15 +8,7 @@
             <sparkle:version>5.1.2</sparkle:version>
             <sparkle:shortVersionString>5.1.2</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://swipey-alpha.vercel.app/Swipey-v5.1.2.dmg" length="1070698" type="application/octet-stream"/>
-        </item>
-        <item>
-            <title>5.1.1</title>
-            <pubDate>Thu, 19 Feb 2026 15:00:10 +0000</pubDate>
-            <sparkle:version>5.1.1</sparkle:version>
-            <sparkle:shortVersionString>5.1.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://swipey-alpha.vercel.app/Swipey-v5.1.1.dmg" length="1068490" type="application/octet-stream" sparkle:edSignature="3KkEvYFBxVLn2IGEZ+4fLcSHLp9alNvC8mLa1il0U18VrzomAFT3L2CxHd2/33af26VxhGDGxAPIdJjtykGLBg=="/>
+            <enclosure url="https://swipey-alpha.vercel.app/Swipey-v5.1.2.dmg" sparkle:edSignature="6TJSc+B60LE7DH9oGyuWOJLM5mfSHjxBnW9ya/AS7wfdRM1Ljs3Q/kBrvwAlVK4cNONoOxbeHgH4P7nCNwnYBg==" length="1070698" type="application/octet-stream"/>
         </item>
     </channel>
 </rss>
