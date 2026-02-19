@@ -5,10 +5,12 @@ final class StatusBarController {
     private let statusItem: NSStatusItem
     private let accessibilityMenuItem: NSMenuItem
     private let accessibilityManager: AccessibilityManager
+    private let updateController: UpdateController
     var onShowTutorial: (() -> Void)?
     var onShowSettings: (() -> Void)?
 
-    init(accessibilityManager: AccessibilityManager) {
+    init(accessibilityManager: AccessibilityManager, updateController: UpdateController) {
+        self.updateController = updateController
         self.accessibilityManager = accessibilityManager
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         accessibilityMenuItem = NSMenuItem()
@@ -50,6 +52,11 @@ final class StatusBarController {
         tutorialItem.target = self
         menu.addItem(tutorialItem)
 
+        // Check for Updates
+        let updateItem = NSMenuItem(title: "Check for Updates\u{2026}", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
+        menu.addItem(updateItem)
+
         menu.addItem(.separator())
 
         // Quit
@@ -87,6 +94,10 @@ final class StatusBarController {
 
     @objc private func showTutorial() {
         onShowTutorial?()
+    }
+
+    @objc private func checkForUpdates() {
+        updateController.checkForUpdates()
     }
 
     @objc private func quit() {

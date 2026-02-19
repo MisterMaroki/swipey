@@ -21,12 +21,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var gridResizeManager: GridResizeManager!
     private var keyboardTileMonitor: KeyboardTileMonitor!
     private var settingsWindow: SettingsWindow?
+    private var updateController: UpdateController!
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.accessory)
 
+        updateController = UpdateController()
+
         accessibilityManager = AccessibilityManager()
-        statusBarController = StatusBarController(accessibilityManager: accessibilityManager)
+        statusBarController = StatusBarController(accessibilityManager: accessibilityManager, updateController: updateController)
         windowManager = WindowManager()
         previewOverlay = PreviewOverlay()
         cursorIndicator = CursorIndicator()
