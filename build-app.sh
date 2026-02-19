@@ -173,6 +173,10 @@ echo "Signing Sparkle.framework..."
 codesign --force --sign "$SIGN_IDENTITY" \
     --options runtime \
     --timestamp \
+    "${FRAMEWORKS_DIR}/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc"
+codesign --force --sign "$SIGN_IDENTITY" \
+    --options runtime \
+    --timestamp \
     "${FRAMEWORKS_DIR}/Sparkle.framework/Versions/B/XPCServices/Installer.xpc"
 codesign --force --sign "$SIGN_IDENTITY" \
     --options runtime \
