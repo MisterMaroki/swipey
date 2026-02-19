@@ -72,6 +72,32 @@ User accepts -> Sparkle extracts, replaces app, relaunches
 
 No changes needed — app is not sandboxed, so network access works without additional entitlements.
 
-### One-time manual setup
+## One-Time Setup Instructions
 
-- Run `generate_keys` to create EdDSA keypair in Keychain
+### 1. Generate EdDSA signing keys
+
+Find the `generate_keys` tool in Sparkle's artifacts:
+
+```bash
+GENERATE_KEYS=$(find .build/artifacts -name "generate_keys" -type f | head -1)
+"$GENERATE_KEYS"
+```
+
+This creates a private key in your Keychain and prints the public key. Copy the public key.
+
+### 2. Set the public key
+
+Either:
+- Export as env var: `export SPARKLE_ED_KEY="your-base64-public-key"`
+- Or replace the placeholder in `build-app.sh` directly
+
+### 3. First release with Sparkle
+
+Run `./build-app.sh` as normal. The script will:
+1. Embed Sparkle.framework in the app bundle
+2. Add SUFeedURL and SUPublicEDKey to Info.plist
+3. After creating the DMG, generate `site/appcast.xml`
+
+### 4. Deploy
+
+Upload the updated `site/` directory (including `appcast.xml` and the new DMG) to your static site host.
