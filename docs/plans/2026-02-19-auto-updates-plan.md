@@ -247,7 +247,7 @@ In the Info.plist heredoc (around line 118-148), add these keys inside the `<dic
 
 ```xml
     <key>SUFeedURL</key>
-    <string>https://swipey.1273.co.uk/appcast.xml</string>
+    <string>https://swipey-alpha.vercel.app/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>${SPARKLE_ED_KEY}</string>
 ```
