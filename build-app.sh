@@ -5,6 +5,7 @@ APP_NAME="Swipey"
 BUNDLE_ID="com.swipey.app"
 VERSION_FILE=".version"
 BUILD_DIR=".build/release"
+SPARKLE_ED_KEY="${SPARKLE_ED_KEY:-REPLACE_ME_WITH_ED25519_PUBLIC_KEY}"
 
 # --- Semver ---
 if [ -f "$VERSION_FILE" ]; then
@@ -103,6 +104,18 @@ mkdir -p "${RESOURCES}"
 
 cp "${BUILD_DIR}/${APP_NAME}" "${MACOS}/${APP_NAME}"
 
+# --- Embed Sparkle.framework ---
+SPARKLE_FRAMEWORK=$(find .build/artifacts -name "Sparkle.framework" -path "*/macos-arm64_x86_64/*" | head -1)
+if [ -z "$SPARKLE_FRAMEWORK" ]; then
+    echo "ERROR: Sparkle.framework not found in .build/artifacts"
+    echo "  Run 'swift package resolve' first."
+    exit 1
+fi
+FRAMEWORKS_DIR="${CONTENTS}/Frameworks"
+mkdir -p "${FRAMEWORKS_DIR}"
+cp -R "$SPARKLE_FRAMEWORK" "${FRAMEWORKS_DIR}/"
+echo "Sparkle.framework embedded."
+
 # Copy app icon if it exists
 if [ -f "$ICON_SOURCE" ]; then
     cp "$ICON_SOURCE" "${RESOURCES}/AppIcon.icns"
@@ -144,12 +157,36 @@ cat > "${CONTENTS}/Info.plist" << PLIST
     <string>Copyright © 2025 Omar Maroki. All rights reserved.</string>
     <key>CFBundleIconFile</key>
     <string>${ICON_REF}</string>
+    <key>SUFeedURL</key>
+    <string>https://swipey-alpha.vercel.app/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>${SPARKLE_ED_KEY}</string>
 </dict>
 </plist>
 PLIST
 
 # --- Code sign the .app ---
 echo ""
+
+# Sign embedded Sparkle framework
+echo "Signing Sparkle.framework..."
+codesign --force --sign "$SIGN_IDENTITY" \
+    --options runtime \
+    --timestamp \
+    "${FRAMEWORKS_DIR}/Sparkle.framework/Versions/B/XPCServices/Installer.xpc"
+codesign --force --sign "$SIGN_IDENTITY" \
+    --options runtime \
+    --timestamp \
+    "${FRAMEWORKS_DIR}/Sparkle.framework/Versions/B/Autoupdate"
+codesign --force --sign "$SIGN_IDENTITY" \
+    --options runtime \
+    --timestamp \
+    "${FRAMEWORKS_DIR}/Sparkle.framework/Versions/B/Updater.app"
+codesign --force --sign "$SIGN_IDENTITY" \
+    --options runtime \
+    --timestamp \
+    "${FRAMEWORKS_DIR}/Sparkle.framework"
+
 echo "Signing ${APP_BUNDLE} with: ${SIGN_IDENTITY}..."
 codesign --force --sign "$SIGN_IDENTITY" \
     --entitlements "$ENTITLEMENTS" \
@@ -219,6 +256,17 @@ else
     echo ""
     echo "⚠ Skipping notarization (no Developer ID certificate)."
     echo "  The DMG was created but won't pass Gatekeeper on other machines."
+fi
+
+# --- Generate/update appcast ---
+GENERATE_APPCAST=$(find .build/artifacts -name "generate_appcast" -type f | head -1)
+if [ -n "$GENERATE_APPCAST" ]; then
+    echo "Generating appcast..."
+    "$GENERATE_APPCAST" site/
+    echo "Appcast updated at site/appcast.xml"
+else
+    echo "WARNING: generate_appcast not found in .build/artifacts"
+    echo "  Appcast will need to be generated manually."
 fi
 
 # --- Move DMG to site/ and update version references ---
