@@ -3,20 +3,12 @@
     <channel>
         <title>Swipey</title>
         <item>
-            <title>5.1.0</title>
-            <pubDate>Thu, 19 Feb 2026 13:46:36 +0000</pubDate>
-            <sparkle:version>5.1.0</sparkle:version>
-            <sparkle:shortVersionString>5.1.0</sparkle:shortVersionString>
+            <title>5.1.1</title>
+            <pubDate>Thu, 19 Feb 2026 15:00:10 +0000</pubDate>
+            <sparkle:version>5.1.1</sparkle:version>
+            <sparkle:shortVersionString>5.1.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://swipey-alpha.vercel.app/Swipey-v5.1.0.dmg" length="1068402" type="application/octet-stream" sparkle:edSignature="TZ+I/iys3Uynru2Aq2dMiATiibt6e4gdOBSykppm2b3YXBhvTzRpcAWIMcuODgWkAvlrnv8s6AnAngEcF9NTAQ=="/>
-        </item>
-        <item>
-            <title>5.0.1</title>
-            <pubDate>Tue, 17 Feb 2026 19:40:30 +0000</pubDate>
-            <sparkle:version>5.0.1</sparkle:version>
-            <sparkle:shortVersionString>5.0.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="Swipey-v5.0.1.dmg" length="187289" type="application/octet-stream"/>
+            <enclosure url="https://swipey-alpha.vercel.app/Swipey-v5.1.1.dmg" length="1068490" type="application/octet-stream" sparkle:edSignature="3KkEvYFBxVLn2IGEZ+4fLcSHLp9alNvC8mLa1il0U18VrzomAFT3L2CxHd2/33af26VxhGDGxAPIdJjtykGLBg=="/>
         </item>
     </channel>
 </rss>

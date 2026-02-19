@@ -262,6 +262,14 @@ else
     echo "  The DMG was created but won't pass Gatekeeper on other machines."
 fi
 
+# --- Move DMG to site/ and update version references ---
+echo ""
+echo "Copying ${DMG_NAME} to site/..."
+mkdir -p site
+# Remove old DMGs before adding the new one
+rm -f site/Swipey-v*.dmg
+mv "${DMG_NAME}" site/
+
 # --- Generate/update appcast ---
 GENERATE_APPCAST=$(find .build/artifacts -name "generate_appcast" -type f | head -1)
 if [ -n "$GENERATE_APPCAST" ]; then
@@ -272,14 +280,6 @@ else
     echo "WARNING: generate_appcast not found in .build/artifacts"
     echo "  Appcast will need to be generated manually."
 fi
-
-# --- Move DMG to site/ and update version references ---
-echo ""
-echo "Copying ${DMG_NAME} to site/..."
-mkdir -p site
-# Remove old DMGs before adding the new one
-rm -f site/Swipey-v*.dmg
-mv "${DMG_NAME}" site/
 
 if [ -f "site/index.html" ] && [ "$CURRENT_VERSION" != "$VERSION" ]; then
     echo "Updating site/index.html: ${CURRENT_VERSION} → ${VERSION}..."
