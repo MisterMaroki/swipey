@@ -5,7 +5,7 @@ APP_NAME="Swipey"
 BUNDLE_ID="com.swipey.app"
 VERSION_FILE=".version"
 BUILD_DIR=".build/release"
-SPARKLE_ED_KEY="${SPARKLE_ED_KEY:-REPLACE_ME_WITH_ED25519_PUBLIC_KEY}"
+SPARKLE_ED_KEY="miOn4rMgHxFFT14BHWKbFcbnQCihNnCGp+PrwFna2PY="
 
 # --- Semver ---
 if [ -f "$VERSION_FILE" ]; then
