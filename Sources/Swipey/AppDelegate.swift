@@ -18,7 +18,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var onboardingTriggered = false
     private var zoomToggleMonitor: ZoomToggleMonitor!
     private var zoomManager: ZoomManager!
-    private var gridResizeManager: GridResizeManager!
+    private var edgeResizeManager: EdgeResizeManager!
     private var keyboardTileMonitor: KeyboardTileMonitor!
     private var settingsWindow: SettingsWindow?
     private var updateController: UpdateController!
@@ -53,8 +53,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         zoomToggleMonitor.start()
 
-        gridResizeManager = GridResizeManager()
-        gridResizeManager.start()
+        edgeResizeManager = EdgeResizeManager()
 
         keyboardTileMonitor = KeyboardTileMonitor(windowManager: windowManager)
         keyboardTileMonitor.onWindowTiled = { [weak self] window in
@@ -63,6 +62,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         keyboardTileMonitor.onTileAction = { [weak self] position in
             MainActor.assumeIsolated {
                 self?.onboardingController?.handleTileAction(position)
+                self?.edgeResizeManager.scheduleRebuild()
             }
         }
         keyboardTileMonitor.start()
@@ -70,6 +70,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         gestureMonitor.onTileAction = { [weak self] position in
             MainActor.assumeIsolated {
                 self?.onboardingController?.handleTileAction(position)
+                self?.edgeResizeManager.scheduleRebuild()
             }
         }
 
@@ -106,10 +107,6 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
                 if self.accessibilityManager.isTrusted && !self.zoomToggleMonitor.isRunning {
                     self.zoomToggleMonitor.start()
-                }
-
-                if self.accessibilityManager.isTrusted && !self.gridResizeManager.isRunning {
-                    self.gridResizeManager.start()
                 }
 
                 if self.accessibilityManager.isTrusted && !self.keyboardTileMonitor.isRunning {
