@@ -3,12 +3,12 @@
     <channel>
         <title>Swipey</title>
         <item>
-            <title>5.1.5</title>
-            <pubDate>Fri, 20 Feb 2026 11:24:29 +0000</pubDate>
-            <sparkle:version>5.1.5</sparkle:version>
-            <sparkle:shortVersionString>5.1.5</sparkle:shortVersionString>
+            <title>5.2.0</title>
+            <pubDate>Fri, 20 Feb 2026 15:53:35 +0000</pubDate>
+            <sparkle:version>5.2.0</sparkle:version>
+            <sparkle:shortVersionString>5.2.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://swipey-alpha.vercel.app/Swipey-v5.1.5.dmg" sparkle:edSignature="zUMrOp0uvB44VVwY1sitnzP9+V3clMon4j2y+Ayzlw2F98jaOLl58nRCkPV13HNHuBfve0qGEUlFnTTRDZ4pDw==" length="1070641" type="application/octet-stream"/>
+            <enclosure url="https://swipey-alpha.vercel.app/Swipey-v5.2.0.dmg" sparkle:edSignature="oMH8PxKPhbiiuNho23GSCuBrUfxAlNqW5umXXf0nNPGD3zSxek3yIOF4vX2Ng4g3KOvzAchn2JdBUwTO8ky5DA==" length="1077273" type="application/octet-stream"/>
         </item>
     </channel>
 </rss>

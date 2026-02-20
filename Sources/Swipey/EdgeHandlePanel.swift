@@ -7,7 +7,7 @@ enum EdgeHandleAxis {
 
 @MainActor
 final class EdgeHandlePanel {
-    private let panel: NSPanel
+    let panel: NSPanel
     let axis: EdgeHandleAxis
     let sharedEdge: SharedEdge
 
@@ -71,14 +71,40 @@ private final class EdgeHandleView: NSView {
     var onDragChanged: ((CGFloat) -> Void)?
     var onDragEnded: (() -> Void)?
 
+    private let pill: NSView
+    private let pillLength: CGFloat = 80
+    private let pillThickness: CGFloat = 5
+
     init(axis: EdgeHandleAxis) {
         self.axis = axis
+        pill = NSView()
+        pill.wantsLayer = true
+        pill.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.85).cgColor
+        pill.layer?.cornerRadius = pillThickness / 2
+        pill.layer?.cornerCurve = .continuous
+        pill.alphaValue = 0
+
         super.init(frame: .zero)
+        addSubview(pill)
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layout() {
+        super.layout()
+        switch axis {
+        case .vertical:
+            let y = (bounds.height - pillLength) / 2
+            let x = (bounds.width - pillThickness) / 2
+            pill.frame = NSRect(x: x, y: y, width: pillThickness, height: pillLength)
+        case .horizontal:
+            let x = (bounds.width - pillLength) / 2
+            let y = (bounds.height - pillThickness) / 2
+            pill.frame = NSRect(x: x, y: y, width: pillLength, height: pillThickness)
+        }
     }
 
     override func updateTrackingAreas() {
@@ -95,15 +121,23 @@ private final class EdgeHandleView: NSView {
         addTrackingArea(area)
     }
 
+    private func updatePillVisibility() {
+        let targetAlpha: CGFloat = (isHighlighted || isDragging) ? 1.0 : 0.0
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.15
+            pill.animator().alphaValue = targetAlpha
+        }
+    }
+
     override func mouseEntered(with event: NSEvent) {
         isHighlighted = true
-        needsDisplay = true
+        updatePillVisibility()
     }
 
     override func mouseExited(with event: NSEvent) {
         if !isDragging {
             isHighlighted = false
-            needsDisplay = true
+            updatePillVisibility()
         }
     }
 
@@ -117,29 +151,10 @@ private final class EdgeHandleView: NSView {
         }
     }
 
-    override func draw(_ dirtyRect: NSRect) {
-        guard isHighlighted || isDragging else { return }
-
-        let color = NSColor.controlAccentColor.withAlphaComponent(isDragging ? 0.7 : 0.5)
-        color.setFill()
-
-        let lineRect: NSRect
-        switch axis {
-        case .vertical:
-            let x = (bounds.width - 2) / 2
-            lineRect = NSRect(x: x, y: 0, width: 2, height: bounds.height)
-        case .horizontal:
-            let y = (bounds.height - 2) / 2
-            lineRect = NSRect(x: 0, y: y, width: bounds.width, height: 2)
-        }
-
-        lineRect.fill()
-    }
-
     override func mouseDown(with event: NSEvent) {
         isDragging = true
         dragStartPoint = NSEvent.mouseLocation
-        needsDisplay = true
+        updatePillVisibility()
         onDragBegan?()
     }
 
@@ -159,7 +174,7 @@ private final class EdgeHandleView: NSView {
     override func mouseUp(with event: NSEvent) {
         isDragging = false
         isHighlighted = false
-        needsDisplay = true
+        updatePillVisibility()
         onDragEnded?()
     }
 }

@@ -18,6 +18,7 @@ final class EdgeResizeManager {
     private var dragWindowElements: [Int: AXUIElement] = [:]
     private var dragInitialFrames: [Int: CGRect] = [:]
     private var activeDragEdge: SharedEdge?
+    private var activeDragHandle: EdgeHandlePanel?
     private var lastSnappedValue: CGFloat?
 
     // Constants
@@ -49,7 +50,7 @@ final class EdgeResizeManager {
     func scheduleRebuild() {
         rebuildGeneration &+= 1
         let expectedGeneration = rebuildGeneration
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             guard let self, self.rebuildGeneration == expectedGeneration else { return }
             self.rebuildHandles()
         }
@@ -102,8 +103,9 @@ final class EdgeResizeManager {
 
             let handle = EdgeHandlePanel(frame: frame, axis: axis, sharedEdge: edge)
 
-            handle.onDragBegan = { [weak self] dragEdge in
-                self?.handleDragBegan(edge: dragEdge, elementMap: elementMap, snapshot: snapshot)
+            handle.onDragBegan = { [weak self, weak handle] dragEdge in
+                guard let handle else { return }
+                self?.handleDragBegan(edge: dragEdge, handle: handle, elementMap: elementMap, snapshot: snapshot)
             }
             handle.onDragChanged = { [weak self] delta in
                 self?.handleDragChanged(delta: delta)
@@ -144,7 +146,8 @@ final class EdgeResizeManager {
 
     // MARK: - Drag Handling
 
-    private func handleDragBegan(edge: SharedEdge, elementMap: [Int: AXUIElement], snapshot: GridSnapshot) {
+    private func handleDragBegan(edge: SharedEdge, handle: EdgeHandlePanel, elementMap: [Int: AXUIElement], snapshot: GridSnapshot) {
+        activeDragHandle = handle
         // Re-read current window frames via AXUIElement for accuracy
         var freshEntries: [(id: Int, frame: CGRect)] = []
         var freshElements: [Int: AXUIElement] = [:]
@@ -171,14 +174,28 @@ final class EdgeResizeManager {
     private func handleDragChanged(delta: CGFloat) {
         guard let edge = activeDragEdge,
               let snapshot = dragSnapshot else { return }
-        applyDrag(delta: delta, edge: edge, snapshot: snapshot)
+        let snappedDelta = applyDrag(delta: delta, edge: edge, snapshot: snapshot)
+
+        // Move the handle panel to follow the edge
+        if let handle = activeDragHandle, let mainScreen = NSScreen.screens.first {
+            var frame = handle.panel.frame
+            if edge.axis == .vertical {
+                let newCGX = edge.coordinate + snappedDelta
+                frame.origin.x = newCGX - frame.width / 2
+            } else {
+                let newCGY = edge.coordinate + snappedDelta
+                frame.origin.y = mainScreen.frame.height - newCGY - frame.height / 2
+            }
+            handle.panel.setFrame(frame, display: true)
+        }
     }
 
-    private func applyDrag(delta: CGFloat, edge: SharedEdge, snapshot: GridSnapshot) {
+    @discardableResult
+    private func applyDrag(delta: CGFloat, edge: SharedEdge, snapshot: GridSnapshot) -> CGFloat {
         guard let frameA = dragInitialFrames[edge.windowAId],
               let frameB = dragInitialFrames[edge.windowBId],
               let axA = dragWindowElements[edge.windowAId],
-              let axB = dragWindowElements[edge.windowBId] else { return }
+              let axB = dragWindowElements[edge.windowBId] else { return delta }
 
         // Compute snap targets: 1/3, 1/2, 2/3 of screen dimension
         var snappedDelta = delta
@@ -239,9 +256,9 @@ final class EdgeResizeManager {
         // Clamp: if either new dimension is too small, skip the update
         switch edge.axis {
         case .vertical:
-            guard newFrameA.width >= minWindowDimension && newFrameB.width >= minWindowDimension else { return }
+            guard newFrameA.width >= minWindowDimension && newFrameB.width >= minWindowDimension else { return snappedDelta }
         case .horizontal:
-            guard newFrameA.height >= minWindowDimension && newFrameB.height >= minWindowDimension else { return }
+            guard newFrameA.height >= minWindowDimension && newFrameB.height >= minWindowDimension else { return snappedDelta }
         }
 
         // Apply frames via AXUIElement
@@ -250,6 +267,8 @@ final class EdgeResizeManager {
 
         // Propagate to neighbors for multi-window (4 quarters) support
         propagateToNeighbors(edge: edge, snappedDelta: snappedDelta, snapshot: snapshot)
+
+        return snappedDelta
     }
 
     private func propagateToNeighbors(edge: SharedEdge, snappedDelta: CGFloat, snapshot: GridSnapshot) {
@@ -303,6 +322,7 @@ final class EdgeResizeManager {
         dragWindowElements = [:]
         dragInitialFrames = [:]
         activeDragEdge = nil
+        activeDragHandle = nil
         lastSnappedValue = nil
         scheduleRebuild()
     }
@@ -319,8 +339,11 @@ final class EdgeResizeManager {
 
         var results: [(AXUIElement, CGRect)] = []
 
+        let myPid = ProcessInfo.processInfo.processIdentifier
+
         for info in windowList {
             guard let pid = info[kCGWindowOwnerPID as String] as? pid_t,
+                  pid != myPid,  // skip our own windows (edge handle panels, overlays)
                   let boundsDict = info[kCGWindowBounds as String] as? [String: CGFloat],
                   let layer = info[kCGWindowLayer as String] as? Int,
                   layer == 0
