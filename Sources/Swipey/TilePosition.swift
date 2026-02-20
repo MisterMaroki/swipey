@@ -30,8 +30,8 @@ public enum TilePosition: Sendable, Hashable {
     /// Calculate the tile frame for a given visible frame rectangle.
     /// Used for testing and zoom calculations without needing an NSScreen.
     public func frame(forVisibleFrame visible: CGRect) -> CGRect {
-        let margin: CGFloat = 2
-        let gap: CGFloat = 4
+        let margin: CGFloat = 0
+        let gap: CGFloat = 1
 
         switch self {
         case .maximize:
