@@ -1,3 +1,4 @@
+@preconcurrency import ApplicationServices
 import AppKit
 
 enum EdgeHandleAxis {
@@ -35,6 +36,9 @@ final class EdgeHandlePanel {
         self.panel = panel
 
         let handleView = EdgeHandleView(axis: axis)
+        handleView.shouldShowPill = { [weak self] in
+            self?.isEdgeExposed() ?? false
+        }
         handleView.onDragBegan = { [weak self] in
             guard let self else { return }
             self.onDragBegan?(self.sharedEdge)
@@ -56,6 +60,54 @@ final class EdgeHandlePanel {
     func close() {
         panel.orderOut(nil)
     }
+
+    /// Check if the topmost window at the cursor is one of the tiled windows sharing this edge.
+    private func isEdgeExposed() -> Bool {
+        let mouseLoc = NSEvent.mouseLocation
+        guard let mainScreen = NSScreen.screens.first else { return true }
+        let cgPoint = CGPoint(x: mouseLoc.x, y: mainScreen.frame.height - mouseLoc.y)
+
+        let myPid = ProcessInfo.processInfo.processIdentifier
+
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else { return true }
+
+        for info in windowList {
+            guard let pid = info[kCGWindowOwnerPID as String] as? pid_t,
+                  pid != myPid,
+                  let boundsDict = info[kCGWindowBounds as String] as? [String: CGFloat],
+                  let layer = info[kCGWindowLayer as String] as? Int,
+                  layer == 0 else { continue }
+
+            guard let x = boundsDict["X"], let y = boundsDict["Y"],
+                  let w = boundsDict["Width"], let h = boundsDict["Height"],
+                  w > 100, h > 100 else { continue }
+
+            let frame = CGRect(x: x, y: y, width: w, height: h)
+            guard frame.contains(cgPoint) else { continue }
+
+            // First normal window at cursor — check if its edge aligns with our shared edge
+            let tolerance: CGFloat = 6
+            switch sharedEdge.axis {
+            case .vertical:
+                if abs(frame.maxX - sharedEdge.coordinate) <= tolerance ||
+                   abs(frame.minX - sharedEdge.coordinate) <= tolerance {
+                    return true
+                }
+            case .horizontal:
+                if abs(frame.maxY - sharedEdge.coordinate) <= tolerance ||
+                   abs(frame.minY - sharedEdge.coordinate) <= tolerance {
+                    return true
+                }
+            }
+            // Topmost window doesn't align with the edge — something is covering it
+            return false
+        }
+
+        return true
+    }
 }
 
 // MARK: - EdgeHandleView
@@ -67,6 +119,7 @@ private final class EdgeHandleView: NSView {
     var isDragging = false
     var dragStartPoint: NSPoint = .zero
 
+    var shouldShowPill: (() -> Bool)?
     var onDragBegan: (() -> Void)?
     var onDragChanged: ((CGFloat) -> Void)?
     var onDragEnded: (() -> Void)?
@@ -107,6 +160,13 @@ private final class EdgeHandleView: NSView {
         }
     }
 
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        if let shouldShowPill, !shouldShowPill() {
+            return nil
+        }
+        return super.hitTest(point)
+    }
+
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         for area in trackingAreas {
@@ -130,6 +190,9 @@ private final class EdgeHandleView: NSView {
     }
 
     override func mouseEntered(with event: NSEvent) {
+        if let shouldShowPill, !shouldShowPill() {
+            return
+        }
         isHighlighted = true
         updatePillVisibility()
     }
