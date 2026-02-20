@@ -113,9 +113,9 @@ final class WindowManager: @unchecked Sendable {
             return
         }
 
-        guard let savedFrame = savedFrames[key] else { return }
+        // Non-fullscreen: minimize to dock
         savedFrames.removeValue(forKey: key)
-        animateTile(window: window, to: savedFrame.origin, size: savedFrame.size)
+        AXUIElementSetAttributeValue(window, kAXMinimizedAttribute as CFString, kCFBooleanTrue)
     }
 
     // MARK: - Animation
